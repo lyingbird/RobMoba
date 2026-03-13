@@ -7,6 +7,7 @@ local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LianPoQ = setmetatable({}, BaseSkill)
 LianPoQ.__index = LianPoQ
@@ -135,25 +136,20 @@ function LianPoQ:OnCast(player, targetPos)
 
 		local currentPos = rootPart.Position
 
-		local function checkModels(parent)
-			for _, model in ipairs(parent:GetChildren()) do
-				if hitTargets[model] then continue end
+		-- PvP: 使用 CombatUtils 检测冲锋路径上的敌方
+		local enemies = CombatUtils.getEnemiesInRange(player, currentPos, halfWidth + 3, character)
+		for _, model in ipairs(enemies) do
+			if not hitTargets[model] then
 				local humanoid = model:FindFirstChild("Humanoid")
 				local targetRoot = model:FindFirstChild("HumanoidRootPart")
-				if humanoid and targetRoot and model ~= character then
-					local dist = (targetRoot.Position - currentPos).Magnitude
-					if dist <= halfWidth + 3 then
-						hitTargets[model] = true
-						humanoid:TakeDamage(finalDamage)
-						knockup(humanoid, targetRoot, knockupDuration)
-					end
+				if humanoid and targetRoot then
+					hitTargets[model] = true
+					model:SetAttribute("LastDamagePlayer", player.Name)
+					humanoid:TakeDamage(finalDamage)
+					knockup(humanoid, targetRoot, knockupDuration)
 				end
 			end
 		end
-
-		checkModels(workspace)
-		local enemyFolder = workspace:FindFirstChild("敌人")
-		if enemyFolder then checkModels(enemyFolder) end
 	end)
 
 	task.delay(dashTime, function()

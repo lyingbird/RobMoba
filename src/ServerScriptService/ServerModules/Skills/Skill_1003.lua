@@ -7,6 +7,7 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LuxW = setmetatable({}, BaseSkill)
 LuxW.__index = LuxW
@@ -178,9 +179,8 @@ function LuxW:OnCast(player, targetPos)
 		local humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
 
 		if humanoid then
-			-- 检查是否是玩家（友方）
-			local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
-			if targetPlayer and not shieldedOnOutward[targetModel] then
+			-- PvP: 只给同队友方加盾
+			if CombatUtils.isAlly(player, targetModel) and not shieldedOnOutward[targetModel] then
 				shieldedOnOutward[targetModel] = true
 				applyShield(humanoid, shieldAmount, shieldDuration)
 				createShieldVFX(targetModel, shieldDuration)
@@ -207,8 +207,8 @@ function LuxW:OnCast(player, targetPos)
 			local targetModel = hit.Parent
 			local humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
 			if humanoid then
-				local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
-				if targetPlayer and not shieldedOnReturn[targetModel] then
+				-- PvP: 只给同队友方加盾
+				if CombatUtils.isAlly(player, targetModel) and not shieldedOnReturn[targetModel] then
 					shieldedOnReturn[targetModel] = true
 					applyShield(humanoid, shieldAmount, shieldDuration)
 				end

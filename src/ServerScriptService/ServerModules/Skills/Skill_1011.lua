@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local HouYiR = setmetatable({}, BaseSkill)
 HouYiR.__index = HouYiR
@@ -141,23 +142,16 @@ function HouYiR:OnCast(player, targetPos)
 		createExplosionVFX(pos, explosionRadius)
 		arrow:Destroy()
 
-		-- 范围伤害+眩晕
-		local function checkModels(parent)
-			for _, model in ipairs(parent:GetChildren()) do
-				local humanoid = model:FindFirstChild("Humanoid")
-				local targetRoot = model:FindFirstChild("HumanoidRootPart")
-				if humanoid and targetRoot and model ~= character then
-					local dist = (targetRoot.Position - pos).Magnitude
-					if dist <= explosionRadius then
-						humanoid:TakeDamage(explosionDamage)
-						applyStun(humanoid, stunDuration)
-					end
-				end
+		-- PvP: 使用 CombatUtils 统一检测范围内敌方
+		local enemies = CombatUtils.getEnemiesInRange(player, pos, explosionRadius, character)
+		for _, model in ipairs(enemies) do
+			local humanoid = model:FindFirstChild("Humanoid")
+			if humanoid then
+				model:SetAttribute("LastDamagePlayer", player.Name)
+				humanoid:TakeDamage(explosionDamage)
+				applyStun(humanoid, stunDuration)
 			end
 		end
-		checkModels(workspace)
-		local enemyFolder = workspace:FindFirstChild("敌人")
-		if enemyFolder then checkModels(enemyFolder) end
 	end
 
 	arrow.Touched:Connect(function(hit)
@@ -170,6 +164,9 @@ function HouYiR:OnCast(player, targetPos)
 		end
 
 		if humanoid then
+			-- PvP: 只对敌方目标直接命中
+			if not CombatUtils.isEnemy(player, targetModel) then return end
+			targetModel:SetAttribute("LastDamagePlayer", player.Name)
 			humanoid:TakeDamage(finalDamage)
 			applyStun(humanoid, stunDuration)
 			explode(arrow.Position)

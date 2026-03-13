@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LianPoW = setmetatable({}, BaseSkill)
 LianPoW.__index = LianPoW
@@ -205,46 +206,41 @@ function LianPoW:OnCast(player, targetPos)
 
 		local hitEnemy = false
 
-		local function checkModels(parent, isEnemyFolder)
-			for _, model in ipairs(parent:GetChildren()) do
-				local humanoid = model:FindFirstChild("Humanoid")
-				local targetRoot = model:FindFirstChild("HumanoidRootPart")
-				if humanoid and targetRoot and model ~= character then
-					local dist = (targetRoot.Position - slamPos).Magnitude
-					if dist <= radius then
-						hitEnemy = true
+		-- PvP: 使用 CombatUtils 统一检测范围内敌方
+		local enemies = CombatUtils.getEnemiesInRange(player, slamPos, radius, character)
+		for _, model in ipairs(enemies) do
+			local humanoid = model:FindFirstChild("Humanoid")
+			local targetRoot = model:FindFirstChild("HumanoidRootPart")
+			if humanoid and targetRoot then
+				hitEnemy = true
+				local dist = (targetRoot.Position - slamPos).Magnitude
 
-						-- 距离中心越近伤害越高，最高200%
-						local distRatio = 1 - (dist / radius)
-						local dmgMultiplier = 1 + distRatio -- 1x到 2x
-						humanoid:TakeDamage(baseDamage * dmgMultiplier)
+				-- 距离中心越近伤害越高，最高200%
+				local distRatio = 1 - (dist / radius)
+				local dmgMultiplier = 1 + distRatio -- 1x到 2x
+				model:SetAttribute("LastDamagePlayer", player.Name)
+				humanoid:TakeDamage(baseDamage * dmgMultiplier)
 
-						-- 减速
-						local origSpeed = humanoid.WalkSpeed
-						humanoid.WalkSpeed = origSpeed * (1 - slowPercent)
-						task.delay(slowDuration, function()
-							if humanoid and humanoid.Parent then
-								humanoid.WalkSpeed = origSpeed
-							end
-						end)
-
-						-- 非英雄单位拉向中心
-						local isPlayer = Players:GetPlayerFromCharacter(model)
-						if not isPlayer and targetRoot then
-							local pullDir = (slamPos - targetRoot.Position).Unit
-							local pullDist = math.min(dist, 5)
-							TweenService:Create(targetRoot, TweenInfo.new(0.3), {
-								CFrame = CFrame.new(targetRoot.Position + pullDir * pullDist) * (targetRoot.CFrame - targetRoot.CFrame.Position)
-							}):Play()
-						end
+				-- 减速
+				local origSpeed = humanoid.WalkSpeed
+				humanoid.WalkSpeed = origSpeed * (1 - slowPercent)
+				task.delay(slowDuration, function()
+					if humanoid and humanoid.Parent then
+						humanoid.WalkSpeed = origSpeed
 					end
+				end)
+
+				-- 非英雄单位拉向中心
+				local isPlayer = Players:GetPlayerFromCharacter(model)
+				if not isPlayer and targetRoot then
+					local pullDir = (slamPos - targetRoot.Position).Unit
+					local pullDist = math.min(dist, 5)
+					TweenService:Create(targetRoot, TweenInfo.new(0.3), {
+						CFrame = CFrame.new(targetRoot.Position + pullDir * pullDist) * (targetRoot.CFrame - targetRoot.CFrame.Position)
+					}):Play()
 				end
 			end
 		end
-
-		checkModels(workspace, false)
-		local enemyFolder = workspace:FindFirstChild("敌人")
-		if enemyFolder then checkModels(enemyFolder, true) end
 
 		-- 范围内有敌人时刷新Q冷却
 		if hitEnemy then

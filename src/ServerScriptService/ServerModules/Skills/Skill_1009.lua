@@ -7,6 +7,7 @@ local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local HouYiQ = setmetatable({}, BaseSkill)
 HouYiQ.__index = HouYiQ
@@ -79,26 +80,8 @@ function HouYiQ:OnCast(player, targetPos)
 		local center = rootPart.Position
 
 		-- 检测范围内敌人
-		local nearestEnemy = nil
-		local nearestDist = detectRadius
-
-		local function findNearest(parent)
-			for _, model in ipairs(parent:GetChildren()) do
-				local humanoid = model:FindFirstChild("Humanoid")
-				local targetRoot = model:FindFirstChild("HumanoidRootPart")
-				if humanoid and targetRoot and model ~= character and humanoid.Health > 0 then
-					local dist = (targetRoot.Position - center).Magnitude
-					if dist < nearestDist then
-						nearestDist = dist
-						nearestEnemy = model
-					end
-				end
-			end
-		end
-
-		findNearest(workspace)
-		local enemyFolder = workspace:FindFirstChild("敌人")
-		if enemyFolder then findNearest(enemyFolder) end
+		-- PvP: 使用 CombatUtils 查找最近敌方
+		local nearestEnemy = CombatUtils.getNearestEnemy(player, center, detectRadius, character)
 
 		for i, s in ipairs(swords) do
 			if not s.alive or not s.part or not s.part.Parent then continue end
@@ -115,6 +98,7 @@ function HouYiQ:OnCast(player, targetPos)
 					if (s.part.Position - enemyRoot.Position).Magnitude < 3 then
 						local humanoid = nearestEnemy:FindFirstChild("Humanoid")
 						if humanoid then
+							nearestEnemy:SetAttribute("LastDamagePlayer", player.Name)
 							humanoid:TakeDamage(finalDamage)
 						end
 						swordCooldowns[i] = os.clock()

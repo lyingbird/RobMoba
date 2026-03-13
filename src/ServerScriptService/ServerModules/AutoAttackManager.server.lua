@@ -4,13 +4,13 @@
 -- ==========================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local AttackTargetEvent = ReplicatedStorage:WaitForChild("AttackTargetEvent")
-local enemiesFolder = workspace:WaitForChild("敌人")
+local CombatUtils = require(ServerScriptService.ServerModules:WaitForChild("CombatUtils"))
 
-local ATTACK_DAMAGE = 100
 local ATTACK_RANGE = 12
 local ATTACK_INTERVAL = 0.8
 
@@ -133,7 +133,9 @@ end
 
 AttackTargetEvent.OnServerEvent:Connect(function(player, targetModel)
 	if not targetModel or not targetModel:IsA("Model") then return end
-	if not targetModel:IsDescendantOf(enemiesFolder) then return end
+
+	-- 使用 CombatUtils 统一验证：目标必须是敌方（NPC 或敌方玩家）
+	if not CombatUtils.isEnemy(player, targetModel) then return end
 
 	local targetHumanoid = targetModel:FindFirstChild("Humanoid")
 	local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
@@ -151,7 +153,27 @@ AttackTargetEvent.OnServerEvent:Connect(function(player, targetModel)
 	if playerLastAttack[userId] and (now - playerLastAttack[userId]) < ATTACK_INTERVAL then return end
 	playerLastAttack[userId] = now
 
-	targetHumanoid:TakeDamage(ATTACK_DAMAGE)
+	-- 读取角色 ATK 属性计算伤害（如没有则回退到默认 65）
+	local atk = character:GetAttribute("ATK") or 65
+	local damage = atk
+
+	-- 暴击判定
+	local critRate = character:GetAttribute("CritRate") or 0
+	local critDmg = character:GetAttribute("CritDmg") or 1.5
+	if math.random() < critRate then
+		damage = damage * critDmg
+	end
+
+	-- 目标防御减伤（物理防御）
+	local targetDef = targetModel:GetAttribute("DEF") or 0
+	local penetration = character:GetAttribute("Penetration") or 0
+	local effectiveDef = math.max(0, targetDef - penetration)
+	damage = damage * (100 / (100 + effectiveDef))
+
+	-- 记录伤害来源（用于击杀归属）
+	targetModel:SetAttribute("LastDamagePlayer", player.Name)
+
+	targetHumanoid:TakeDamage(math.floor(damage))
 	playAttackAnimation(character, targetRoot)
 	createSlashVFX(rootPart, targetRoot)
 end)

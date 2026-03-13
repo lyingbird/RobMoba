@@ -7,6 +7,7 @@ local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LuxE = setmetatable({}, BaseSkill)
 LuxE.__index = LuxE
@@ -147,30 +148,14 @@ local function detonateZone(zoneData)
 
 	createDetonationVFX(position, radius)
 
-	-- 范围伤害
-	for _, model in ipairs(workspace:GetChildren()) do
+	-- PvP: 使用 CombatUtils 统一检测范围内敌方
+	local casterPlayer = zoneData.casterPlayer
+	local enemies = CombatUtils.getEnemiesInRange(casterPlayer, position, radius, zoneData.casterCharacter)
+	for _, model in ipairs(enemies) do
 		local humanoid = model:FindFirstChild("Humanoid")
-		local rootPart = model:FindFirstChild("HumanoidRootPart")
-		if humanoid and rootPart and model ~= zoneData.casterCharacter then
-			local dist = (rootPart.Position - position).Magnitude
-			if dist <= radius then
-				humanoid:TakeDamage(damage)
-			end
-		end
-	end
-
-	-- 也检查敌人文件夹
-	local enemyFolder = workspace:FindFirstChild("敌人")
-	if enemyFolder then
-		for _, model in ipairs(enemyFolder:GetChildren()) do
-			local humanoid = model:FindFirstChild("Humanoid")
-			local rootPart = model:FindFirstChild("HumanoidRootPart")
-			if humanoid and rootPart then
-				local dist = (rootPart.Position - position).Magnitude
-				if dist <= radius then
-					humanoid:TakeDamage(damage)
-				end
-			end
+		if humanoid then
+			model:SetAttribute("LastDamagePlayer", casterPlayer.Name)
+			humanoid:TakeDamage(damage)
 		end
 	end
 
@@ -273,6 +258,7 @@ function LuxE:OnCast(player, targetPos)
 		radius = radius,
 		damage = finalDamage,
 		casterCharacter = character,
+		casterPlayer = player,
 		zonePart = zonePart,
 		orbPart = orbPart,
 		detonated = false,
@@ -284,32 +270,26 @@ function LuxE:OnCast(player, targetPos)
 	zoneData.heartbeatConn = RunService.Heartbeat:Connect(function()
 		if zoneData.detonated then return end
 
-		local enemyFolder = workspace:FindFirstChild("敌人")
-		local modelsToCheck = {}
-
-		if enemyFolder then
-			for _, m in ipairs(enemyFolder:GetChildren()) do
-				table.insert(modelsToCheck, m)
+		-- PvP: 使用 CombatUtils 获取范围内所有敌方
+		local enemies = CombatUtils.getEnemiesInRange(player, landPos, radius, character)
+		local currentInRange = {}
+		for _, model in ipairs(enemies) do
+			currentInRange[model] = true
+			local humanoid = model:FindFirstChild("Humanoid")
+			if humanoid and not slowedTargets[model] then
+				slowedTargets[model] = humanoid.WalkSpeed
+				humanoid.WalkSpeed = humanoid.WalkSpeed * 0.5
 			end
 		end
 
-		-- 检测区域内敌人并减速
-		for _, model in ipairs(modelsToCheck) do
-			local humanoid = model:FindFirstChild("Humanoid")
-			local rootPart = model:FindFirstChild("HumanoidRootPart")
-			if humanoid and rootPart then
-				local dist = (rootPart.Position - landPos).Magnitude
-				if dist <= radius then
-					if not slowedTargets[model] then
-						slowedTargets[model] = humanoid.WalkSpeed
-						humanoid.WalkSpeed = humanoid.WalkSpeed * 0.5
-					end
-				else
-					if slowedTargets[model] then
-						humanoid.WalkSpeed = slowedTargets[model]
-						slowedTargets[model] = nil
-					end
+		-- 离开范围的目标恢复速度
+		for model, originalSpeed in pairs(slowedTargets) do
+			if not currentInRange[model] then
+				local humanoid = model:FindFirstChild("Humanoid")
+				if humanoid then
+					humanoid.WalkSpeed = originalSpeed
 				end
+				slowedTargets[model] = nil
 			end
 		end
 	end)

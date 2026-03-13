@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LuxR = setmetatable({}, BaseSkill)
 LuxR.__index = LuxR
@@ -173,13 +174,13 @@ function LuxR:OnCast(player, targetPos)
 	local hitTargets = {}
 	local halfWidth = beamWidth / 2
 
-	local function checkModels(parent)
-		for _, model in ipairs(parent:GetChildren()) do
-			if hitTargets[model] then continue end
-			local humanoid = model:FindFirstChild("Humanoid")
+	-- PvP: 使用 CombatUtils 获取范围内所有敌方，再做光束路径检测
+	local enemies = CombatUtils.getEnemiesInRange(player, beamStart, maxRange, character)
+	for _, model in ipairs(enemies) do
+		if not hitTargets[model] then
 			local targetRoot = model:FindFirstChild("HumanoidRootPart")
-			if humanoid and targetRoot and model ~= character then
-				-- 计算目标到光束中心线的距离
+			local humanoid = model:FindFirstChild("Humanoid")
+			if targetRoot and humanoid then
 				local toTarget = targetRoot.Position - beamStart
 				local projected = toTarget:Dot(direction)
 
@@ -189,17 +190,12 @@ function LuxR:OnCast(player, targetPos)
 
 					if perpDist <= halfWidth + 3 then
 						hitTargets[model] = true
+						model:SetAttribute("LastDamagePlayer", player.Name)
 						humanoid:TakeDamage(finalDamage)
 					end
 				end
 			end
 		end
-	end
-
-	checkModels(workspace)
-	local enemyFolder = workspace:FindFirstChild("敌人")
-	if enemyFolder then
-		checkModels(enemyFolder)
 	end
 end
 

@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local AngelaR = setmetatable({}, BaseSkill)
 AngelaR.__index = AngelaR
@@ -167,27 +168,24 @@ function AngelaR:OnCast(player, targetPos)
 		if elapsed - lastDamageTick >= damageInterval then
 			lastDamageTick = elapsed
 
-			local function checkModels(parent)
-				for _, model in ipairs(parent:GetChildren()) do
-					local humanoid = model:FindFirstChild("Humanoid")
-					local tRoot = model:FindFirstChild("HumanoidRootPart")
-					if humanoid and tRoot and model ~= character then
-						local toTarget = tRoot.Position - beamStart
-						local projected = toTarget:Dot(direction)
-						if projected >= 0 and projected <= maxRange then
-							local closestPoint = beamStart + direction * projected
-							local perpDist = (tRoot.Position - closestPoint).Magnitude
-							if perpDist <= halfWidth + 3 then
-								humanoid:TakeDamage(damagePerTick)
-							end
+			-- PvP: 使用 CombatUtils 获取范围内敌方，再做光束路径检测
+			local enemies = CombatUtils.getEnemiesInRange(player, beamStart, maxRange, character)
+			for _, model in ipairs(enemies) do
+				local humanoid = model:FindFirstChild("Humanoid")
+				local tRoot = model:FindFirstChild("HumanoidRootPart")
+				if humanoid and tRoot then
+					local toTarget = tRoot.Position - beamStart
+					local projected = toTarget:Dot(direction)
+					if projected >= 0 and projected <= maxRange then
+						local closestPoint = beamStart + direction * projected
+						local perpDist = (tRoot.Position - closestPoint).Magnitude
+						if perpDist <= halfWidth + 3 then
+							model:SetAttribute("LastDamagePlayer", player.Name)
+							humanoid:TakeDamage(damagePerTick)
 						end
 					end
 				end
 			end
-
-			checkModels(workspace)
-			local enemyFolder = workspace:FindFirstChild("敌人")
-			if enemyFolder then checkModels(enemyFolder) end
 		end
 	end)
 end

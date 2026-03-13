@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LianPoR = setmetatable({}, BaseSkill)
 LianPoR.__index = LianPoR
@@ -192,31 +193,25 @@ function LianPoR:OnCast(player, targetPos)
 		-- 地面碎裂VFX
 		createSlamVFX(slamPos, radius, hitIndex)
 
-		-- 范围伤害
-		local function checkModels(parent)
-			for _, model in ipairs(parent:GetChildren()) do
-				local humanoid = model:FindFirstChild("Humanoid")
-				local targetRoot = model:FindFirstChild("HumanoidRootPart")
-				if humanoid and targetRoot and model ~= character then
-					local d = (targetRoot.Position - slamPos).Magnitude
-					if d <= radius then
-						-- 中心区域额外伤害
-						local centerBonus = (d <= radius * 0.4) and 1.5 or 1
-						humanoid:TakeDamage(hitData.damage * centerBonus)
+		-- 范围伤害 — PvP: 使用 CombatUtils 统一检测
+		local enemies = CombatUtils.getEnemiesInRange(player, slamPos, radius, character)
+		for _, model in ipairs(enemies) do
+			local humanoid = model:FindFirstChild("Humanoid")
+			local targetRoot = model:FindFirstChild("HumanoidRootPart")
+			if humanoid and targetRoot then
+				local d = (targetRoot.Position - slamPos).Magnitude
+				-- 中心区域额外伤害
+				local centerBonus = (d <= radius * 0.4) and 1.5 or 1
+				model:SetAttribute("LastDamagePlayer", player.Name)
+				humanoid:TakeDamage(hitData.damage * centerBonus)
 
-						if hitData.knockupTime > 0 then
-							knockup(targetRoot, hitData.knockupTime)
-						elseif hitData.slow > 0 then
-							applySlow(humanoid, hitData.slow, 2)
-						end
-					end
+				if hitData.knockupTime > 0 then
+					knockup(targetRoot, hitData.knockupTime)
+				elseif hitData.slow > 0 then
+					applySlow(humanoid, hitData.slow, 2)
 				end
 			end
 		end
-
-		checkModels(workspace)
-		local enemyFolder = workspace:FindFirstChild("敌人")
-		if enemyFolder then checkModels(enemyFolder) end
 	end
 
 	-- 恢复移动

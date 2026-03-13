@@ -4,6 +4,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("UITheme"))
 local CooldownManager = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("CooldownManager"))
@@ -25,6 +26,15 @@ UI_HUD.StatLabels = {}
 UI_HUD.LevelText = nil
 UI_HUD.XpFill = nil
 UI_HUD.XpText = nil
+
+-- PvP UI references
+local killScoreFrame = nil
+local myKillText = nil
+local enemyKillText = nil
+local deathOverlay = nil
+local deathTimerText = nil
+local resultScreen = nil
+local resultText = nil
 
 local warningScreen = nil
 
@@ -579,6 +589,241 @@ function UI_HUD.Init()
 	end
 
 	StartGlobalCDMonitor()
+
+	-- ==========================
+	-- PvP: Kill Score Display (top center)
+	-- ==========================
+	local pvpScreen = Instance.new("ScreenGui")
+	pvpScreen.Name = "PvP_HUD"
+	pvpScreen.ResetOnSpawn = false
+	pvpScreen.DisplayOrder = 15
+	pvpScreen.Parent = playerGui
+	Theme.autoScale(pvpScreen)
+
+	killScoreFrame = Instance.new("Frame")
+	killScoreFrame.Name = "KillScore"
+	killScoreFrame.Size = UDim2.new(0, 220, 0, 48)
+	killScoreFrame.Position = UDim2.new(0.5, -110, 0, 12)
+	killScoreFrame.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
+	killScoreFrame.BackgroundTransparency = 0.25
+	killScoreFrame.BorderSizePixel = 0
+	killScoreFrame.Parent = pvpScreen
+	Theme.corner(killScoreFrame, 10)
+	Theme.shadow(killScoreFrame, 3, 12)
+
+	-- My team kills (left, blue side)
+	local myTeamLabel = Instance.new("TextLabel")
+	myTeamLabel.Size = UDim2.new(0.35, 0, 1, 0)
+	myTeamLabel.Position = UDim2.new(0, 0, 0, 0)
+	myTeamLabel.BackgroundTransparency = 1
+	myTeamLabel.Font = Enum.Font.GothamBold
+	myTeamLabel.TextSize = 26
+	myTeamLabel.TextColor3 = Color3.fromRGB(80, 180, 255)
+	myTeamLabel.Text = "0"
+	myTeamLabel.Parent = killScoreFrame
+	myKillText = myTeamLabel
+
+	-- VS separator (center)
+	local vsLabel = Instance.new("TextLabel")
+	vsLabel.Size = UDim2.new(0.3, 0, 1, 0)
+	vsLabel.Position = UDim2.new(0.35, 0, 0, 0)
+	vsLabel.BackgroundTransparency = 1
+	vsLabel.Font = Enum.Font.GothamBold
+	vsLabel.TextSize = 16
+	vsLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+	vsLabel.Text = "VS"
+	vsLabel.Parent = killScoreFrame
+
+	-- Enemy team kills (right, red side)
+	local enemyTeamLabel = Instance.new("TextLabel")
+	enemyTeamLabel.Size = UDim2.new(0.35, 0, 1, 0)
+	enemyTeamLabel.Position = UDim2.new(0.65, 0, 0, 0)
+	enemyTeamLabel.BackgroundTransparency = 1
+	enemyTeamLabel.Font = Enum.Font.GothamBold
+	enemyTeamLabel.TextSize = 26
+	enemyTeamLabel.TextColor3 = Color3.fromRGB(235, 75, 75)
+	enemyTeamLabel.Text = "0"
+	enemyTeamLabel.Parent = killScoreFrame
+	enemyKillText = enemyTeamLabel
+
+	-- ==========================
+	-- PvP: Death Overlay
+	-- ==========================
+	deathOverlay = Instance.new("Frame")
+	deathOverlay.Name = "DeathOverlay"
+	deathOverlay.Size = UDim2.new(1, 0, 1, 0)
+	deathOverlay.BackgroundColor3 = Color3.fromRGB(15, 0, 0)
+	deathOverlay.BackgroundTransparency = 0.35
+	deathOverlay.BorderSizePixel = 0
+	deathOverlay.ZIndex = 50
+	deathOverlay.Visible = false
+	deathOverlay.Parent = pvpScreen
+
+	local deathLabel = Instance.new("TextLabel")
+	deathLabel.Size = UDim2.new(0.6, 0, 0, 40)
+	deathLabel.Position = UDim2.new(0.2, 0, 0.38, 0)
+	deathLabel.BackgroundTransparency = 1
+	deathLabel.Font = Enum.Font.GothamBold
+	deathLabel.TextSize = 32
+	deathLabel.TextColor3 = Color3.fromRGB(220, 60, 60)
+	deathLabel.Text = "YOU HAVE BEEN SLAIN"
+	deathLabel.TextStrokeTransparency = 0.3
+	deathLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	deathLabel.ZIndex = 51
+	deathLabel.Parent = deathOverlay
+
+	deathTimerText = Instance.new("TextLabel")
+	deathTimerText.Size = UDim2.new(0.4, 0, 0, 50)
+	deathTimerText.Position = UDim2.new(0.3, 0, 0.48, 0)
+	deathTimerText.BackgroundTransparency = 1
+	deathTimerText.Font = Enum.Font.GothamBold
+	deathTimerText.TextSize = 48
+	deathTimerText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	deathTimerText.Text = "5"
+	deathTimerText.TextStrokeTransparency = 0.2
+	deathTimerText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	deathTimerText.ZIndex = 51
+	deathTimerText.Parent = deathOverlay
+
+	-- ==========================
+	-- PvP: Result Screen
+	-- ==========================
+	resultScreen = Instance.new("Frame")
+	resultScreen.Name = "ResultScreen"
+	resultScreen.Size = UDim2.new(1, 0, 1, 0)
+	resultScreen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	resultScreen.BackgroundTransparency = 0.3
+	resultScreen.BorderSizePixel = 0
+	resultScreen.ZIndex = 60
+	resultScreen.Visible = false
+	resultScreen.Parent = pvpScreen
+
+	local resultBanner = Instance.new("Frame")
+	resultBanner.Size = UDim2.new(0.6, 0, 0, 140)
+	resultBanner.Position = UDim2.new(0.2, 0, 0.3, 0)
+	resultBanner.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
+	resultBanner.BackgroundTransparency = 0.1
+	resultBanner.BorderSizePixel = 0
+	resultBanner.ZIndex = 61
+	resultBanner.Parent = resultScreen
+	Theme.corner(resultBanner, 16)
+	Theme.shadow(resultBanner, 6, 30)
+
+	resultText = Instance.new("TextLabel")
+	resultText.Size = UDim2.new(1, 0, 0, 60)
+	resultText.Position = UDim2.new(0, 0, 0, 20)
+	resultText.BackgroundTransparency = 1
+	resultText.Font = Enum.Font.GothamBold
+	resultText.TextSize = 42
+	resultText.TextColor3 = Color3.fromRGB(255, 230, 80)
+	resultText.Text = "VICTORY!"
+	resultText.TextStrokeTransparency = 0.2
+	resultText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	resultText.ZIndex = 62
+	resultText.Parent = resultBanner
+
+	local resultSubText = Instance.new("TextLabel")
+	resultSubText.Name = "SubText"
+	resultSubText.Size = UDim2.new(1, 0, 0, 30)
+	resultSubText.Position = UDim2.new(0, 0, 0, 85)
+	resultSubText.BackgroundTransparency = 1
+	resultSubText.Font = Enum.Font.GothamMedium
+	resultSubText.TextSize = 16
+	resultSubText.TextColor3 = Color3.fromRGB(180, 180, 180)
+	resultSubText.Text = ""
+	resultSubText.ZIndex = 62
+	resultSubText.Parent = resultBanner
+
+	-- ==========================
+	-- PvP: RemoteEvent Listeners
+	-- ==========================
+	task.spawn(function()
+		local matchStateEvent = ReplicatedStorage:WaitForChild("MatchStateEvent", 30)
+		if not matchStateEvent then return end
+
+		matchStateEvent.OnClientEvent:Connect(function(eventType, data)
+			if eventType == "kill_update" then
+				-- data = { kills = { [teamName] = count, ... } }
+				local myTeam = player.Team
+				if not myTeam then return end
+				local myTeamName = myTeam.Name
+				local myKills = 0
+				local enemyKills = 0
+				for teamName, count in pairs(data.kills) do
+					if teamName == myTeamName then
+						myKills = count
+					else
+						enemyKills = count
+					end
+				end
+				if myKillText then myKillText.Text = tostring(myKills) end
+				if enemyKillText then enemyKillText.Text = tostring(enemyKills) end
+
+			elseif eventType == "match_end" then
+				-- data = { winnerTeam = "Red"/"Blue", kills = {...} }
+				if resultScreen then
+					resultScreen.Visible = true
+					local myTeam = player.Team
+					local won = myTeam and (myTeam.Name == data.winnerTeam)
+					if won then
+						resultText.Text = "VICTORY!"
+						resultText.TextColor3 = Color3.fromRGB(80, 220, 120)
+					else
+						resultText.Text = "DEFEAT"
+						resultText.TextColor3 = Color3.fromRGB(235, 75, 75)
+					end
+					-- Update sub text with final score
+					local myKills = 0
+					local enemyKills = 0
+					if myTeam and data.kills then
+						for teamName, count in pairs(data.kills) do
+							if teamName == myTeam.Name then
+								myKills = count
+							else
+								enemyKills = count
+							end
+						end
+					end
+					local subText = resultScreen:FindFirstChild("ResultScreen") and resultScreen:FindFirstChild("SubText")
+					local banner = resultBanner
+					if banner then
+						local sub = banner:FindFirstChild("SubText")
+						if sub then
+							sub.Text = "Final Score: " .. myKills .. " - " .. enemyKills
+						end
+					end
+				end
+			end
+		end)
+	end)
+
+	task.spawn(function()
+		local deathTimerEvent = ReplicatedStorage:WaitForChild("DeathTimerEvent", 30)
+		if not deathTimerEvent then return end
+
+		deathTimerEvent.OnClientEvent:Connect(function(eventType, data)
+			if eventType == "death_start" then
+				-- data = { respawnTime = 5 }
+				if deathOverlay then
+					deathOverlay.Visible = true
+					local remaining = data.respawnTime or 5
+					task.spawn(function()
+						while remaining > 0 and deathOverlay.Visible do
+							if deathTimerText then
+								deathTimerText.Text = tostring(math.ceil(remaining))
+							end
+							task.wait(1)
+							remaining = remaining - 1
+						end
+						if deathOverlay then deathOverlay.Visible = false end
+					end)
+				end
+
+			elseif eventType == "death_end" then
+				if deathOverlay then deathOverlay.Visible = false end
+			end
+		end)
+	end)
 end
 
 function UI_HUD.CloseAllPopups()

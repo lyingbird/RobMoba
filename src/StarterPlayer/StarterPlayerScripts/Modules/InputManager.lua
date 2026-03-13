@@ -15,6 +15,7 @@ local CinematicManager = require(script.Parent:WaitForChild("CinematicManager"))
 
 local SkillDirectionEvent = ReplicatedStorage:WaitForChild("SkillDirectionEvent")
 local AttackTargetEvent = ReplicatedStorage:WaitForChild("AttackTargetEvent")
+local Players = game:GetService("Players")
 local isChanneling = false
 
 -- 普攻系统
@@ -26,11 +27,28 @@ local hoveredEnemy = nil
 local enemyHighlight = nil
 local enemiesFolder = workspace:WaitForChild("敌人")
 
-local function findEnemyModel(part)
+--- 从 Part 向上查找目标 Model（NPC 或敌方玩家角色）
+--- @param part Instance 鼠标悬停的零件
+--- @return Model? 敌方目标模型
+local function findTargetModel(part)
 	local current = part
 	while current and current ~= workspace do
+		-- 检查是否为 NPC 敌人
 		if current.Parent == enemiesFolder then
 			return current
+		end
+		-- 检查是否为其他玩家的角色（排除自己）
+		if current:IsA("Model") then
+			for _, otherPlayer in ipairs(Players:GetPlayers()) do
+				if otherPlayer ~= player and otherPlayer.Character == current then
+					-- 检查是否为不同 Team（敌方）
+					local myTeam = player.Team
+					local theirTeam = otherPlayer.Team
+					if myTeam and theirTeam and myTeam ~= theirTeam then
+						return current
+					end
+				end
+			end
 		end
 		current = current.Parent
 	end
@@ -452,7 +470,7 @@ function InputManager.Init()
 
 		-- 鼠标悬停敌人高亮
 		local mouseTarget = mouse.Target
-		local enemyModel = mouseTarget and findEnemyModel(mouseTarget) or nil
+		local enemyModel = mouseTarget and findTargetModel(mouseTarget) or nil
 		if enemyModel ~= hoveredEnemy then
 			if enemyHighlight then
 				enemyHighlight:Destroy()

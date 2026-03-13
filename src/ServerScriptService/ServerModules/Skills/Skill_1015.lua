@@ -7,6 +7,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LianPoCinematic = setmetatable({}, BaseSkill)
 LianPoCinematic.__index = LianPoCinematic
@@ -92,15 +93,14 @@ local function createDebrisRocks(position, count)
 	end
 end
 
-local function dealAreaDamage(position, radius, damage)
-	local enemiesFolder = workspace:FindFirstChild("敌人")
-	if not enemiesFolder then return end
-	for _, enemy in ipairs(enemiesFolder:GetChildren()) do
-		if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChild("Humanoid") then
-			local dist = (enemy.HumanoidRootPart.Position - position).Magnitude
-			if dist <= radius then
-				enemy.Humanoid:TakeDamage(damage)
-			end
+local function dealAreaDamage(position, radius, damage, casterPlayer, casterCharacter)
+	-- PvP: 使用 CombatUtils 统一检测范围内敌方
+	local enemies = CombatUtils.getEnemiesInRange(casterPlayer, position, radius, casterCharacter)
+	for _, enemy in ipairs(enemies) do
+		local humanoid = enemy:FindFirstChild("Humanoid")
+		if humanoid then
+			enemy:SetAttribute("LastDamagePlayer", casterPlayer.Name)
+			humanoid:TakeDamage(damage)
 		end
 	end
 end
@@ -123,7 +123,7 @@ function LianPoCinematic:OnCast(player, targetPos)
 	task.delay(1.6, function()
 		if not rootPart or not rootPart.Parent then return end
 		local pos = rootPart.Position
-		dealAreaDamage(pos, radius, damage)
+		dealAreaDamage(pos, radius, damage, player, character)
 		createGroundCrack(pos, radius * 0.5)
 		createShockwave(pos, radius)
 		createDebrisRocks(pos, 5)
@@ -133,7 +133,7 @@ function LianPoCinematic:OnCast(player, targetPos)
 	task.delay(2.5, function()
 		if not rootPart or not rootPart.Parent then return end
 		local pos = rootPart.Position
-		dealAreaDamage(pos, radius, damage * 1.5)
+		dealAreaDamage(pos, radius, damage * 1.5, player, character)
 		createGroundCrack(pos, radius * 0.7)
 		createShockwave(pos, radius * 1.3)
 		createDebrisRocks(pos, 8)
@@ -143,7 +143,7 @@ function LianPoCinematic:OnCast(player, targetPos)
 	task.delay(3.3, function()
 		if not rootPart or not rootPart.Parent then return end
 		local pos = rootPart.Position
-		dealAreaDamage(pos, radius * 1.5, damage * 2.5)
+		dealAreaDamage(pos, radius * 1.5, damage * 2.5, player, character)
 		createGroundCrack(pos, radius * 1.2)
 		createShockwave(pos, radius * 2)
 		createDebrisRocks(pos, 12)

@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local RunService = game:GetService("RunService")
 
@@ -146,20 +147,15 @@ function AngelaW:OnCast(player, targetPos)
 		local tickInterval = vortexDuration / 6
 		for tick = 1, 6 do
 			task.delay(tickInterval * tick, function()
-				local function checkModels(parent)
-					for _, model in ipairs(parent:GetChildren()) do
-						local humanoid = model:FindFirstChild("Humanoid")
-						local targetRoot = model:FindFirstChild("HumanoidRootPart")
-						if humanoid and targetRoot and model ~= character then
-							if (targetRoot.Position - pos).Magnitude <= vortexRadius then
-								humanoid:TakeDamage(vortexDamage)
-							end
-						end
+				-- PvP: 使用 CombatUtils 统一检测范围内敌方
+				local enemies = CombatUtils.getEnemiesInRange(player, pos, vortexRadius, character)
+				for _, model in ipairs(enemies) do
+					local humanoid = model:FindFirstChild("Humanoid")
+					if humanoid then
+						model:SetAttribute("LastDamagePlayer", player.Name)
+						humanoid:TakeDamage(vortexDamage)
 					end
 				end
-				checkModels(workspace)
-				local enemyFolder = workspace:FindFirstChild("敌人")
-				if enemyFolder then checkModels(enemyFolder) end
 			end)
 		end
 	end
@@ -174,6 +170,9 @@ function AngelaW:OnCast(player, targetPos)
 		end
 
 		if humanoid then
+			-- PvP: 只对敌方目标直接命中
+			if not CombatUtils.isEnemy(player, targetModel) then return end
+			targetModel:SetAttribute("LastDamagePlayer", player.Name)
 			detonate(seed.Position, true, humanoid)
 		end
 	end)

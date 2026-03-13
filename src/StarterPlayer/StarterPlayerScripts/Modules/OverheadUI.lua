@@ -9,6 +9,18 @@ local OverheadUI = {}
 local localPlayer = Players.LocalPlayer
 local activeGuis = {}
 
+-- Helper: determine if a player is an enemy of localPlayer based on Team
+local function isEnemyPlayer(otherPlayer)
+	if otherPlayer == localPlayer then return false end
+	local myTeam = localPlayer.Team
+	local theirTeam = otherPlayer.Team
+	if myTeam and theirTeam then
+		return myTeam ~= theirTeam
+	end
+	-- No team assigned yet, treat other players as enemies by default
+	return true
+end
+
 local BAR_WIDTH = 7  -- studs
 local BAR_HEIGHT = 0.6
 local LEVEL_SIZE = 0.85
@@ -79,7 +91,16 @@ local function createOverheadGui(character, player)
 	nameLabel.Position = UDim2.new(0, 28, 0, -3)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = player.DisplayName
-	nameLabel.TextColor3 = (player == localPlayer) and Color3.fromRGB(100, 220, 130) or Color3.fromRGB(220, 220, 220)
+	-- PvP: Self=green, Enemy=red, Ally=light blue
+	local nameColor
+	if player == localPlayer then
+		nameColor = Color3.fromRGB(100, 220, 130) -- Self: green
+	elseif isEnemyPlayer(player) then
+		nameColor = Color3.fromRGB(235, 75, 75) -- Enemy: red
+	else
+		nameColor = Color3.fromRGB(130, 200, 255) -- Ally: light blue
+	end
+	nameLabel.TextColor3 = nameColor
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextSize = 13
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -109,9 +130,10 @@ local function createOverheadGui(character, player)
 	hpStroke.Transparency = 0.3
 	hpStroke.Parent = hpBg
 
-	-- HP fill (green for allies/self, red for enemies in future)
+	-- HP fill: green for self/allies, red for enemies
 	local isLocal = (player == localPlayer)
-	local hpColor = isLocal and Color3.fromRGB(50, 190, 80) or Color3.fromRGB(50, 190, 80)
+	local isEnemy = isEnemyPlayer(player)
+	local hpColor = isEnemy and Color3.fromRGB(220, 55, 55) or Color3.fromRGB(50, 190, 80)
 
 	local hpFill = Instance.new("Frame")
 	hpFill.Name = "HpFill"
@@ -201,6 +223,7 @@ local function createOverheadGui(character, player)
 		humanoid = humanoid,
 		character = character,
 		player = player,
+		isEnemy = isEnemy,
 	}
 
 	activeGuis[character] = data
@@ -305,13 +328,17 @@ function OverheadUI.UpdateBar(data)
 		data.hpText.Text = math.floor(hp) .. " / " .. math.floor(maxHp)
 	end
 
-	-- Change color based on HP percentage
-	if ratio > 0.5 then
-		data.hpFill.BackgroundColor3 = Color3.fromRGB(50, 190, 80)
-	elseif ratio > 0.25 then
-		data.hpFill.BackgroundColor3 = Color3.fromRGB(220, 180, 40)
+	-- Change color based on HP percentage (enemies stay red)
+	if data.isEnemy then
+		data.hpFill.BackgroundColor3 = Color3.fromRGB(220, 55, 55)
 	else
-		data.hpFill.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+		if ratio > 0.5 then
+			data.hpFill.BackgroundColor3 = Color3.fromRGB(50, 190, 80)
+		elseif ratio > 0.25 then
+			data.hpFill.BackgroundColor3 = Color3.fromRGB(220, 180, 40)
+		else
+			data.hpFill.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+		end
 	end
 
 	-- XP bar

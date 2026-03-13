@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local AngelaQ = setmetatable({}, BaseSkill)
 AngelaQ.__index = AngelaQ
@@ -34,10 +35,9 @@ local function playHitVFX(position)
 	Debris:AddItem(flash, 0.4)
 end
 
-local function checkHit(fireball, character, finalDamage)
+-- PvP: 用 CombatUtils 检测范围内所有敌方目标
+local function checkHit(fireball, character, player, finalDamage)
 	local hitTriggered = false
-	local enemiesFolder = workspace:FindFirstChild("敌人")
-	if not enemiesFolder then return function() return hitTriggered end end
 
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
@@ -45,17 +45,18 @@ local function checkHit(fireball, character, finalDamage)
 			if conn then conn:Disconnect() end
 			return
 		end
-		for _, enemy in ipairs(enemiesFolder:GetChildren()) do
-			if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChild("Humanoid") then
-				local dist = (enemy.HumanoidRootPart.Position - fireball.Position).Magnitude
-				if dist < 4 then
-					hitTriggered = true
-					enemy.Humanoid:TakeDamage(finalDamage)
-					playHitVFX(fireball.Position)
-					fireball:Destroy()
-					conn:Disconnect()
-					return
-				end
+		-- 使用 CombatUtils.getEnemiesInRange 检测半径4内的敌方
+		local enemies = CombatUtils.getEnemiesInRange(player, fireball.Position, 4, character)
+		for _, enemy in ipairs(enemies) do
+			local humanoid = enemy:FindFirstChild("Humanoid")
+			if humanoid then
+				hitTriggered = true
+				enemy:SetAttribute("LastDamagePlayer", player.Name)
+				humanoid:TakeDamage(finalDamage)
+				playHitVFX(fireball.Position)
+				fireball:Destroy()
+				conn:Disconnect()
+				return
 			end
 		end
 	end)
@@ -126,7 +127,7 @@ function AngelaQ:OnCast(player, targetPos)
 		light.Parent = fireball
 
 		-- 硬编碰撞检测 + Heartbeat移动
-		local isHit = checkHit(fireball, character, finalDamage)
+		local isHit = checkHit(fireball, character, player, finalDamage)
 
 		task.spawn(function()
 			local currentPos = spawnPos

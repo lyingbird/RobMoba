@@ -3,6 +3,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local FireballSkill = setmetatable({}, BaseSkill)
 FireballSkill.__index = FireballSkill
@@ -88,11 +89,14 @@ function FireballSkill:OnCast(player, targetPos)
 
 		fireball.Touched:Connect(function(hit)
 			if hitTriggered or hit:IsDescendantOf(character) then return end
-			local humanoid = hit.Parent:FindFirstChild("Humanoid") or hit.Parent.Parent:FindFirstChild("Humanoid")
+			local targetModel = hit.Parent:FindFirstChild("Humanoid") and hit.Parent or (hit.Parent.Parent and hit.Parent.Parent:FindFirstChild("Humanoid") and hit.Parent.Parent or nil)
 
-			if humanoid then
+			if targetModel and targetModel:FindFirstChild("Humanoid") then
+				-- PvP: 只对敌方目标造成伤害
+				if not CombatUtils.isEnemy(player, targetModel) then return end
 				hitTriggered = true
-				humanoid:TakeDamage(finalDamage)
+				targetModel:SetAttribute("LastDamagePlayer", player.Name)
+				targetModel:FindFirstChild("Humanoid"):TakeDamage(finalDamage)
 				playExplosionVFX(fireball.Position, powerScale)
 				fireball:Destroy()
 			elseif hit.CanCollide then

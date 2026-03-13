@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
 local LuxQ = setmetatable({}, BaseSkill)
 LuxQ.__index = LuxQ
@@ -164,8 +165,11 @@ function LuxQ:OnCast(player, targetPos)
 		end
 
 		if humanoid and not hitTargets[targetModel] then
+			-- PvP: 只对敌方目标生效
+			if not CombatUtils.isEnemy(player, targetModel) then return end
 			hitTargets[targetModel] = true
 			hitCount = hitCount + 1
+			targetModel:SetAttribute("LastDamagePlayer", player.Name)
 			humanoid:TakeDamage(finalDamage)
 
 			-- 束缚: 临时锚定根部件
