@@ -12,6 +12,8 @@ local CooldownManager = require(script.Parent:WaitForChild("CooldownManager"))
 local UIManager = require(script.Parent.Parent:WaitForChild("UIManager"))
 local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
 local CinematicManager = require(script.Parent:WaitForChild("CinematicManager"))
+local HeroAnimator = require(script.Parent:WaitForChild("HeroAnimator"))
+local HeroConfig = require(ReplicatedStorage:WaitForChild("HeroConfig"))
 
 -- 全局启用/禁用开关（由 GameManager 状态控制）
 local inputEnabled = true
@@ -286,8 +288,13 @@ function InputManager.Init()
 			return
 		end
 
-		-- B key: toggle backpack
+		-- B key: toggle backpack (只有 AllowBackpack 的英雄才能打开)
 		if input.KeyCode == Enum.KeyCode.B then
+			local heroID = HeroAnimator.GetHeroID()
+			local heroData = heroID and HeroConfig[heroID]
+			if heroData and not heroData.AllowBackpack then
+				return
+			end
 			isBackpackOpen = UIManager.ToggleBackpack()
 			if isBackpackOpen then
 				interruptCasting()

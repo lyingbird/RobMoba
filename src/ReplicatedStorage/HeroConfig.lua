@@ -10,7 +10,7 @@ return {
 		Theme = Color3.fromRGB(255, 220, 100), -- 金色
 		Skills = { Q = 1002, W = 1003, R = 1005 },
 		-- 1001(Fireball) 是通用测试技能, 1004(LuxE) 是额外技能
-		AllowBackpack = true,
+		AllowBackpack = false,
 		-- 动画配置（无特殊道具）
 		Poses = {
 			Cast_Q = {
@@ -46,7 +46,7 @@ return {
 		DisplayName = "安琪拉",
 		Theme = Color3.fromRGB(200, 80, 255), -- 紫色
 		Skills = { Q = 1006, W = 1007, R = 1008 },
-		AllowBackpack = true,
+		AllowBackpack = false,
 		-- Angela 有魔法书道具
 		Accessory = {
 			Type = "Book",
@@ -89,7 +89,7 @@ return {
 		DisplayName = "后羿",
 		Theme = Color3.fromRGB(255, 160, 50), -- 橙色
 		Skills = { Q = 1009, W = 1010, R = 1011 },
-		AllowBackpack = true,
+		AllowBackpack = false,
 		Poses = {
 			Cast_Q = {
 				RightShoulder = {-40, 0, -60},
@@ -123,9 +123,9 @@ return {
 		HeroID = "LianPo",
 		DisplayName = "廉颇",
 		Theme = Color3.fromRGB(100, 180, 255), -- 蓝色
-		Skills = { Q = 1012, W = 1013, R = 1015 },
+		Skills = { Q = 1012, W = 1013, R = 1014 },
 		-- 1014(LianPoR) 是普通R, 1015(LianPoCinematic) 是电影特写版R
-		AllowBackpack = true,
+		AllowBackpack = false,
 		Poses = {
 			Cast_Q = {
 				RightShoulder = {-15, 0, -40},

@@ -31,7 +31,7 @@ local isShowing = false       -- 全屏面板是否正在显示
 local onHeroConfirmed = nil   -- 英雄确认后的回调函数
 
 -- 英雄显示顺序
-local HERO_ORDER = { "Angela", "Lux", "HouYi", "LianPo", "Test" }
+local HERO_ORDER = { "Angela", "HouYi", "LianPo", "Test" }
 
 local function createSkillIcon(parent, skillID, size)
 	local data = SkillConfig[skillID]
