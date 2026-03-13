@@ -4,3 +4,12 @@
 *.rbxm
 .DS_Store
 Thumbs.db
+
+# CodeBuddy / Claude Code 个人数据
+.codebuddy/
+
+# Claude Code 个人配置
+.claude/
+
+# 第三方 agent 集合（不属于项目）
+awesome-claude-agents/
