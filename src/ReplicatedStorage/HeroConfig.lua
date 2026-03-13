@@ -1,178 +1,171 @@
+-- ==========================================
+-- HeroConfig: 英雄级别配置表
+-- 每个英雄包含：基本信息、技能映射、主题色、动画数据
+-- Key = 英雄名字符串 (与 DEFAULT_HEROES / HERO_ORDER 对应)
+-- ==========================================
 return {
-	[1001] = {
-		Name = "Fireball",
-		BaseCD = 10,
-		BaseRange = 40,
-		BaseDamage = 2500,
-		Speed = 60,
-		UIName = "火球术",
-		Icon = "rbxassetid://105719906967326"
+	["Lux"] = {
+		HeroID = "Lux",
+		DisplayName = "光辉女郎",
+		Theme = Color3.fromRGB(255, 220, 100), -- 金色
+		Skills = { Q = 1002, W = 1003, R = 1005 },
+		-- 1001(Fireball) 是通用测试技能, 1004(LuxE) 是额外技能
+		AllowBackpack = true,
+		-- 动画配置（无特殊道具）
+		Poses = {
+			Cast_Q = {
+				RightShoulder = {-20, 0, -90},
+				LeftShoulder = {0, 0, 30},
+				Waist = {0, -15, 0},
+			},
+			Cast_W = {
+				RightShoulder = {-30, 0, -80},
+				LeftShoulder = {-30, 0, 80},
+				Waist = {-10, 0, 0},
+			},
+			Cast_R = {
+				RightShoulder = {-70, 0, -90},
+				LeftShoulder = {-70, 0, 90},
+				Waist = {-20, 0, 0},
+				Neck = {-15, 0, 0},
+			},
+			Windup = {
+				RightShoulder = {10, 0, 20},
+				LeftShoulder = {10, 0, -20},
+				Waist = {10, 0, 0},
+				Root = {5, 0, 0},
+			},
+		},
+		CastDurations = { Q = 0.6, W = 0.5, R = 1.2 },
+		CastLift = { Q = 0, W = 0, R = 3 },
+		MoveLock = { Q = "none", W = "none", R = "full" },
 	},
-	[1002] = {
-		Name = "LuxQ",
-		BaseCD = 11,
-		BaseRange = 50,
-		BaseDamage = 250,
-		Speed = 55,
-		UIName = "光之束缚",
-		Icon = "rbxassetid://128294170183609"
+
+	["Angela"] = {
+		HeroID = "Angela",
+		DisplayName = "安琪拉",
+		Theme = Color3.fromRGB(200, 80, 255), -- 紫色
+		Skills = { Q = 1006, W = 1007, R = 1008 },
+		AllowBackpack = true,
+		-- Angela 有魔法书道具
+		Accessory = {
+			Type = "Book",
+			Size = Vector3.new(1.2, 0.1, 0.8),
+			Color = Color3.fromRGB(160, 60, 220),
+			AttachJoint = "LeftHand",
+			ScaleOnR = 2.5,
+		},
+		Poses = {
+			Cast_Q = {
+				RightShoulder = {-30, 0, -80},
+				LeftShoulder = {-10, 0, 40},
+				Waist = {0, -20, 0},
+			},
+			Cast_W = {
+				RightShoulder = {-20, 0, -70},
+				LeftShoulder = {-20, 0, 70},
+				Waist = {-5, 0, 0},
+			},
+			Cast_R = {
+				RightShoulder = {-80, 0, -90},
+				LeftShoulder = {-80, 0, 90},
+				Waist = {-25, 0, 0},
+				Neck = {-20, 0, 0},
+			},
+			Windup = {
+				RightShoulder = {15, 0, 25},
+				LeftShoulder = {15, 0, -25},
+				Waist = {12, 0, 0},
+				Root = {8, 0, 0},
+			},
+		},
+		CastDurations = { Q = 0.5, W = 0.7, R = 1.5 },
+		CastLift = { Q = 0, W = 1, R = 5 },
+		MoveLock = { Q = "none", W = "until_fire", R = "full" },
 	},
-	[1003] = {
-		Name = "LuxW",
-		BaseCD = 14,
-		BaseRange = 45,
-		BaseDamage = 0,
-		Speed = 50,
-		ShieldAmount = 150,
-		UIName = "曲光屏障",
-		Icon = "rbxassetid://127821745515043"
+
+	["HouYi"] = {
+		HeroID = "HouYi",
+		DisplayName = "后羿",
+		Theme = Color3.fromRGB(255, 160, 50), -- 橙色
+		Skills = { Q = 1009, W = 1010, R = 1011 },
+		AllowBackpack = true,
+		Poses = {
+			Cast_Q = {
+				RightShoulder = {-40, 0, -60},
+				LeftShoulder = {-10, 0, 30},
+				Waist = {0, -10, 0},
+			},
+			Cast_W = {
+				RightShoulder = {-60, 0, -90},
+				LeftShoulder = {-20, 0, 50},
+				Waist = {-10, 0, 0},
+			},
+			Cast_R = {
+				RightShoulder = {-90, 0, -60},
+				LeftShoulder = {-50, 0, 60},
+				Waist = {-15, 0, 0},
+				Neck = {-25, 0, 0},
+			},
+			Windup = {
+				RightShoulder = {10, 0, 15},
+				LeftShoulder = {5, 0, -10},
+				Waist = {8, 0, 0},
+				Root = {3, 0, 0},
+			},
+		},
+		CastDurations = { Q = 0.4, W = 0.6, R = 1.0 },
+		CastLift = { Q = 0, W = 0, R = 4 },
+		MoveLock = { Q = "none", W = "none", R = "full" },
 	},
-	[1004] = {
-		Name = "LuxE",
-		BaseCD = 10,
-		BaseRange = 45,
-		BaseDamage = 240,
-		Speed = 40,
-		AreaRadius = 15,
-		Duration = 5,
-		UIName = "透光奇点",
-		Icon = "rbxassetid://136209389780773"
+
+	["LianPo"] = {
+		HeroID = "LianPo",
+		DisplayName = "廉颇",
+		Theme = Color3.fromRGB(100, 180, 255), -- 蓝色
+		Skills = { Q = 1012, W = 1013, R = 1015 },
+		-- 1014(LianPoR) 是普通R, 1015(LianPoCinematic) 是电影特写版R
+		AllowBackpack = true,
+		Poses = {
+			Cast_Q = {
+				RightShoulder = {-15, 0, -40},
+				LeftShoulder = {-15, 0, 40},
+				Waist = {5, 0, 0},
+				Root = {-5, 0, 0},
+			},
+			Cast_W = {
+				RightShoulder = {20, 0, -60},
+				LeftShoulder = {20, 0, 60},
+				Waist = {15, 0, 0},
+			},
+			Cast_R = {
+				RightShoulder = {-30, 0, -50},
+				LeftShoulder = {-30, 0, 50},
+				Waist = {-20, 0, 0},
+				Root = {-10, 0, 0},
+				Neck = {-10, 0, 0},
+			},
+			Windup = {
+				RightShoulder = {20, 0, 30},
+				LeftShoulder = {20, 0, -30},
+				Waist = {15, 0, 0},
+				Root = {10, 0, 0},
+			},
+		},
+		CastDurations = { Q = 0.5, W = 0.3, R = 1.0 },
+		CastLift = { Q = 0, W = 0, R = 2 },
+		MoveLock = { Q = "until_fire", W = "none", R = "full" },
 	},
-	[1005] = {
-		Name = "LuxR",
-		BaseCD = 60,
-		BaseRange = 200,
-		BaseDamage = 500,
-		Speed = 0,
-		IsUltimate = true,
-		CastTime = 1,
-		UIName = "终极闪光",
-		Icon = "rbxassetid://96074938800917"
-	},
-	[1006] = {
-		Name = "AngelaQ",
-		BaseCD = 6,
-		BaseRange = 45,
-		BaseDamage = 300,
-		Speed = 55,
-		BulletCount = 5,
-		SpreadWidth = 8,
-		ConvergeIndicator = true,
-		UIName = "火球术",
-		Icon = "rbxassetid://79478084537574"
-	},
-	[1007] = {
-		Name = "AngelaW",
-		BaseCD = 8,
-		BaseRange = 40,
-		BaseDamage = 400,
-		Speed = 50,
-		StunDuration = 1,
-		VortexRadius = 8,
-		VortexDuration = 3,
-		VortexDamage = 80,
-		UIName = "混沌火种",
-		Icon = "rbxassetid://74736538945177"
-	},
-	[1008] = {
-		Name = "AngelaR",
-		BaseCD = 50,
-		BaseRange = 60,
-		BaseDamage = 200,
-		Speed = 0,
-		IsUltimate = true,
-		Duration = 3,
-		TickCount = 10,
-		BeamWidth = 8,
-		TurnSpeed = 1.5,
-		UIName = "炽热光辉",
-		Icon = "rbxassetid://85476569427906"
-	},
-	[1009] = {
-		Name = "HouYiQ",
-		BaseCD = 10,
-		BaseRange = 20,
-		BaseDamage = 150,
-		Speed = 0,
-		SwordCount = 5,
-		Duration = 6,
-		DetectRadius = 20,
-		UIName = "多重箭矢",
-		Icon = "rbxassetid://79835807608371"
-	},
-	[1010] = {
-		Name = "HouYiW",
-		BaseCD = 12,
-		BaseRange = 45,
-		BaseDamage = 120,
-		Speed = 0,
-		AreaRadius = 12,
-		Duration = 2,
-		TickCount = 4,
-		UIName = "日之塔",
-		Icon = "rbxassetid://114645837123980"
-	},
-	[1011] = {
-		Name = "HouYiR",
-		BaseCD = 40,
-		BaseRange = 100,
-		BaseDamage = 500,
-		Speed = 65,
-		IsUltimate = true,
-		StunDuration = 1.5,
-		ExplosionRadius = 12,
-		ExplosionDamage = 250,
-		UIName = "烈日裁决",
-		Icon = "rbxassetid://105119622343321"
-	},
-	[1012] = {
-		Name = "LianPoQ",
-		BaseCD = 8,
-		BaseRange = 30,
-		BaseDamage = 350,
-		Speed = 40,
-		DashWidth = 6,
-		KnockupDuration = 0.8,
-		UIName = "爆裂冲撞",
-		Icon = "rbxassetid://112235105032199"
-	},
-	[1013] = {
-		Name = "LianPoW",
-		BaseCD = 10,
-		BaseRange = 5,
-		BaseDamage = 400,
-		Speed = 0,
-		AreaRadius = 14,
-		ShieldAmount = 500,
-		SlowPercent = 0.25,
-		SlowDuration = 2,
-		InstantCast = true,
-		UIName = "熔岩重击",
-		Icon = "rbxassetid://72768482471616"
-	},
-	[1014] = {
-		Name = "LianPoR",
-		BaseCD = 45,
-		BaseRange = 30,
-		BaseDamage = 200,
-		Speed = 0,
-		IsUltimate = true,
-		AreaRadius = 12,
-		HitCount = 3,
-		UIName = "地裂天崩",
-		Icon = "rbxassetid://127042110717394"
-	},
-	[1015] = {
-		Name = "LianPoCinematic",
-		BaseCD = 60,
-		BaseRange = 20,
-		BaseDamage = 300,
-		Speed = 0,
-		IsUltimate = true,
-		AreaRadius = 15,
-		Cinematic = true,
-		InstantCast = true,
-		UIName = "天崩地裂·终极",
-		Icon = "rbxassetid://127042110717394"
+
+	-- 测试英雄（用通用火球术）
+	["Test"] = {
+		HeroID = "Test",
+		DisplayName = "测试",
+		Theme = Color3.fromRGB(180, 180, 180), -- 灰色
+		Skills = { Q = 1001 },
+		AllowBackpack = true,
+		CastDurations = { Q = 0.5 },
+		CastLift = { Q = 0 },
+		MoveLock = { Q = "none" },
 	},
 }

@@ -38,6 +38,17 @@ local resultText = nil
 
 local warningScreen = nil
 
+-- Game flow UI references (new for PvP system)
+local waitingOverlay = nil
+local waitingText = nil
+local battleCountdownOverlay = nil
+local battleCountdownText = nil
+local newResultScreen = nil
+local newResultText = nil
+local resultDataFrame = nil
+local rematchBtn = nil
+local leaveBtn = nil
+
 function UI_HUD.GetSkillIDInSlot(key)
 	if not UI_HUD.SkillsContainer then return nil end
 	local slot = UI_HUD.SkillsContainer:FindFirstChild("ActionSlot_" .. key)
@@ -824,6 +835,177 @@ function UI_HUD.Init()
 			end
 		end)
 	end)
+
+	-- ==========================
+	-- Game Flow: Waiting Overlay
+	-- ==========================
+	local flowScreen = Instance.new("ScreenGui")
+	flowScreen.Name = "GameFlowScreen"
+	flowScreen.ResetOnSpawn = false
+	flowScreen.DisplayOrder = 90
+	flowScreen.IgnoreGuiInset = true
+	flowScreen.Parent = playerGui
+	Theme.autoScale(flowScreen)
+
+	waitingOverlay = Instance.new("Frame")
+	waitingOverlay.Name = "WaitingOverlay"
+	waitingOverlay.Size = UDim2.new(1, 0, 1, 0)
+	waitingOverlay.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
+	waitingOverlay.BackgroundTransparency = 0.3
+	waitingOverlay.BorderSizePixel = 0
+	waitingOverlay.ZIndex = 40
+	waitingOverlay.Visible = false
+	waitingOverlay.Parent = flowScreen
+
+	waitingText = Instance.new("TextLabel")
+	waitingText.Size = UDim2.new(0.6, 0, 0, 60)
+	waitingText.Position = UDim2.new(0.2, 0, 0.4, 0)
+	waitingText.BackgroundTransparency = 1
+	waitingText.Font = Enum.Font.GothamBold
+	waitingText.TextSize = 28
+	waitingText.TextColor3 = Color3.fromRGB(200, 210, 230)
+	waitingText.Text = "等待对手加入... (1/2)"
+	waitingText.ZIndex = 41
+	waitingText.Parent = waitingOverlay
+
+	local waitingSubText = Instance.new("TextLabel")
+	waitingSubText.Size = UDim2.new(0.6, 0, 0, 24)
+	waitingSubText.Position = UDim2.new(0.2, 0, 0.4, 60)
+	waitingSubText.BackgroundTransparency = 1
+	waitingSubText.Font = Enum.Font.GothamMedium
+	waitingSubText.TextSize = 14
+	waitingSubText.TextColor3 = Theme.TEXT_LIGHT
+	waitingSubText.Text = "WAITING FOR OPPONENT..."
+	waitingSubText.ZIndex = 41
+	waitingSubText.Parent = waitingOverlay
+
+	-- 等待动画（圆点闪烁，不可见时低频）
+	task.spawn(function()
+		local dots = 0
+		while true do
+			task.wait(0.5)
+			if not waitingOverlay or not waitingOverlay.Parent then break end
+			if not waitingOverlay.Visible then
+				task.wait(1)
+			else
+				dots = (dots % 3) + 1
+				if waitingSubText and waitingSubText.Parent then
+					waitingSubText.Text = "WAITING FOR OPPONENT" .. string.rep(".", dots)
+				end
+			end
+		end
+	end)
+
+	-- ==========================
+	-- Game Flow: Battle Countdown
+	-- ==========================
+	battleCountdownOverlay = Instance.new("Frame")
+	battleCountdownOverlay.Name = "BattleCountdown"
+	battleCountdownOverlay.Size = UDim2.new(1, 0, 1, 0)
+	battleCountdownOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	battleCountdownOverlay.BackgroundTransparency = 0.7
+	battleCountdownOverlay.BorderSizePixel = 0
+	battleCountdownOverlay.ZIndex = 70
+	battleCountdownOverlay.Visible = false
+	battleCountdownOverlay.Parent = flowScreen
+
+	battleCountdownText = Instance.new("TextLabel")
+	battleCountdownText.Size = UDim2.new(0.4, 0, 0, 120)
+	battleCountdownText.Position = UDim2.new(0.3, 0, 0.35, 0)
+	battleCountdownText.BackgroundTransparency = 1
+	battleCountdownText.Font = Enum.Font.GothamBold
+	battleCountdownText.TextSize = 96
+	battleCountdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	battleCountdownText.Text = "3"
+	battleCountdownText.TextStrokeTransparency = 0.1
+	battleCountdownText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	battleCountdownText.ZIndex = 71
+	battleCountdownText.Parent = battleCountdownOverlay
+
+	-- ==========================
+	-- Game Flow: New Result Screen (with stats + buttons)
+	-- ==========================
+	newResultScreen = Instance.new("Frame")
+	newResultScreen.Name = "NewResultScreen"
+	newResultScreen.Size = UDim2.new(1, 0, 1, 0)
+	newResultScreen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	newResultScreen.BackgroundTransparency = 0.3
+	newResultScreen.BorderSizePixel = 0
+	newResultScreen.ZIndex = 80
+	newResultScreen.Visible = false
+	newResultScreen.Parent = flowScreen
+
+	-- 结果标题
+	newResultText = Instance.new("TextLabel")
+	newResultText.Size = UDim2.new(1, 0, 0, 70)
+	newResultText.Position = UDim2.new(0, 0, 0.1, 0)
+	newResultText.BackgroundTransparency = 1
+	newResultText.Font = Enum.Font.GothamBold
+	newResultText.TextSize = 52
+	newResultText.TextColor3 = Color3.fromRGB(255, 230, 80)
+	newResultText.Text = "VICTORY!"
+	newResultText.TextStrokeTransparency = 0.1
+	newResultText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	newResultText.ZIndex = 81
+	newResultText.Parent = newResultScreen
+
+	-- 数据面板
+	resultDataFrame = Instance.new("Frame")
+	resultDataFrame.Name = "ResultData"
+	resultDataFrame.Size = UDim2.new(0, 500, 0, 200)
+	resultDataFrame.Position = UDim2.new(0.5, -250, 0.3, 0)
+	resultDataFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
+	resultDataFrame.BackgroundTransparency = 0.1
+	resultDataFrame.BorderSizePixel = 0
+	resultDataFrame.ZIndex = 81
+	resultDataFrame.Parent = newResultScreen
+	Theme.corner(resultDataFrame, 14)
+	Theme.shadow(resultDataFrame, 6, 30)
+
+	-- 再来一局按钮
+	rematchBtn = Instance.new("TextButton")
+	rematchBtn.Size = UDim2.new(0, 180, 0, 50)
+	rematchBtn.Position = UDim2.new(0.5, -200, 0.75, 0)
+	rematchBtn.BackgroundColor3 = Color3.fromRGB(60, 140, 60)
+	rematchBtn.BorderSizePixel = 0
+	rematchBtn.Text = "🔄 再来一局"
+	rematchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	rematchBtn.TextSize = 18
+	rematchBtn.Font = Enum.Font.GothamBold
+	rematchBtn.ZIndex = 82
+	rematchBtn.Parent = newResultScreen
+	Theme.corner(rematchBtn, 10)
+
+	rematchBtn.MouseButton1Click:Connect(function()
+		local RematchEvent = ReplicatedStorage:FindFirstChild("RematchEvent")
+		if RematchEvent then
+			RematchEvent:FireServer({ action = "rematch" })
+			rematchBtn.Text = "✅ 等待对手..."
+			rematchBtn.Active = false
+			rematchBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+		end
+	end)
+
+	-- 离开按钮
+	leaveBtn = Instance.new("TextButton")
+	leaveBtn.Size = UDim2.new(0, 180, 0, 50)
+	leaveBtn.Position = UDim2.new(0.5, 20, 0.75, 0)
+	leaveBtn.BackgroundColor3 = Color3.fromRGB(140, 50, 50)
+	leaveBtn.BorderSizePixel = 0
+	leaveBtn.Text = "🚪 离开"
+	leaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	leaveBtn.TextSize = 18
+	leaveBtn.Font = Enum.Font.GothamBold
+	leaveBtn.ZIndex = 82
+	leaveBtn.Parent = newResultScreen
+	Theme.corner(leaveBtn, 10)
+
+	leaveBtn.MouseButton1Click:Connect(function()
+		local RematchEvent = ReplicatedStorage:FindFirstChild("RematchEvent")
+		if RematchEvent then
+			RematchEvent:FireServer({ action = "leave" })
+		end
+	end)
 end
 
 function UI_HUD.CloseAllPopups()
@@ -851,6 +1033,235 @@ end
 
 function UI_HUD.HasSkillInSlot(key)
 	return UI_HUD.GetSkillIDInSlot(key) ~= nil
+end
+
+-- ========== 游戏流程 UI 控制方法 ==========
+
+--- 显示等待界面
+--- @param playerCount number 当前人数
+--- @param requiredPlayers number 所需人数
+function UI_HUD.ShowWaiting(playerCount, requiredPlayers)
+	if waitingOverlay then
+		waitingOverlay.Visible = true
+		if waitingText then
+			waitingText.Text = ("等待对手加入... (%d/%d)"):format(
+				playerCount or 0, requiredPlayers or 2
+			)
+		end
+	end
+	-- 隐藏旧的结算和死亡覆盖
+	if resultScreen then resultScreen.Visible = false end
+	if deathOverlay then deathOverlay.Visible = false end
+	if newResultScreen then newResultScreen.Visible = false end
+end
+
+--- 隐藏等待界面
+function UI_HUD.HideWaiting()
+	if waitingOverlay then
+		waitingOverlay.Visible = false
+	end
+end
+
+--- 更新等待人数
+function UI_HUD.UpdateWaitingCount(playerCount, requiredPlayers)
+	if waitingText then
+		waitingText.Text = ("等待对手加入... (%d/%d)"):format(
+			playerCount or 0, requiredPlayers or 2
+		)
+	end
+end
+
+--- 显示战斗倒计时（3...2...1...GO!）
+--- @param seconds number 倒计时秒数
+function UI_HUD.ShowBattleCountdown(seconds)
+	if not battleCountdownOverlay then return end
+	battleCountdownOverlay.Visible = true
+
+	task.spawn(function()
+		local remaining = seconds or 3
+		while remaining > 0 do
+			if battleCountdownText then
+				battleCountdownText.Text = tostring(remaining)
+				battleCountdownText.TextSize = 96
+
+				-- 脉冲动画
+				TweenService:Create(battleCountdownText, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+					TextSize = 120,
+				}):Play()
+				task.delay(0.3, function()
+					if battleCountdownText then
+						TweenService:Create(battleCountdownText, TweenInfo.new(0.5), {
+							TextSize = 96,
+						}):Play()
+					end
+				end)
+			end
+			task.wait(1)
+			remaining = remaining - 1
+		end
+
+		-- GO!
+		if battleCountdownText then
+			battleCountdownText.Text = "GO!"
+			battleCountdownText.TextColor3 = Color3.fromRGB(80, 255, 120)
+			TweenService:Create(battleCountdownText, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+				TextSize = 140,
+			}):Play()
+		end
+
+		task.wait(0.8)
+		if battleCountdownOverlay then
+			battleCountdownOverlay.Visible = false
+		end
+		if battleCountdownText then
+			battleCountdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
+			battleCountdownText.TextSize = 96
+		end
+	end)
+end
+
+--- 隐藏战斗倒计时
+function UI_HUD.HideBattleCountdown()
+	if battleCountdownOverlay then
+		battleCountdownOverlay.Visible = false
+	end
+end
+
+--- 显示结算界面
+--- @param data table { winner: string, players: [{playerName, team, heroId, kills, deaths, damageDealt}] }
+function UI_HUD.ShowResult(data)
+	if not newResultScreen then return end
+	-- 隐藏旧结算和死亡
+	if resultScreen then resultScreen.Visible = false end
+	if deathOverlay then deathOverlay.Visible = false end
+
+	newResultScreen.Visible = true
+
+	-- 判断胜负
+	local myTeam = player.Team
+	local won = myTeam and (myTeam.Name == data.winner)
+	if newResultText then
+		if won then
+			newResultText.Text = "🏆 VICTORY!"
+			newResultText.TextColor3 = Color3.fromRGB(80, 220, 120)
+		else
+			newResultText.Text = "💀 DEFEAT"
+			newResultText.TextColor3 = Color3.fromRGB(235, 75, 75)
+		end
+	end
+
+	-- 清空数据面板
+	if resultDataFrame then
+		for _, child in ipairs(resultDataFrame:GetChildren()) do
+			if not child:IsA("UICorner") and not child:IsA("UIShadow") then
+				child:Destroy()
+			end
+		end
+
+		-- 表头
+		local headers = { "玩家", "英雄", "击杀", "死亡", "伤害" }
+		local colWidths = { 120, 80, 60, 60, 80 }
+		local xOffset = 20
+		for i, header in ipairs(headers) do
+			local hLabel = Instance.new("TextLabel")
+			hLabel.Size = UDim2.new(0, colWidths[i], 0, 30)
+			hLabel.Position = UDim2.new(0, xOffset, 0, 10)
+			hLabel.BackgroundTransparency = 1
+			hLabel.Text = header
+			hLabel.TextColor3 = Theme.TEXT_LIGHT
+			hLabel.TextSize = 12
+			hLabel.Font = Enum.Font.GothamBold
+			hLabel.TextXAlignment = Enum.TextXAlignment.Center
+			hLabel.ZIndex = 82
+			hLabel.Parent = resultDataFrame
+			xOffset = xOffset + colWidths[i] + 10
+		end
+
+		-- 分割线
+		local divider = Instance.new("Frame")
+		divider.Size = UDim2.new(1, -40, 0, 1)
+		divider.Position = UDim2.new(0, 20, 0, 42)
+		divider.BackgroundColor3 = Color3.fromRGB(50, 56, 72)
+		divider.BackgroundTransparency = 0.3
+		divider.BorderSizePixel = 0
+		divider.ZIndex = 82
+		divider.Parent = resultDataFrame
+
+		-- 玩家数据行
+		local players = data.players or {}
+		for row, pInfo in ipairs(players) do
+			local yPos = 48 + (row - 1) * 35
+			xOffset = 20
+			local isMyTeam = myTeam and (pInfo.team == myTeam.Name)
+			local rowColor = isMyTeam and Color3.fromRGB(80, 180, 255) or Color3.fromRGB(235, 100, 100)
+
+			local rowData = {
+				pInfo.playerName or "?",
+				pInfo.heroId or "?",
+				tostring(pInfo.kills or 0),
+				tostring(pInfo.deaths or 0),
+				tostring(pInfo.damageDealt or 0),
+			}
+
+			for i, text in ipairs(rowData) do
+				local label = Instance.new("TextLabel")
+				label.Size = UDim2.new(0, colWidths[i], 0, 30)
+				label.Position = UDim2.new(0, xOffset, 0, yPos)
+				label.BackgroundTransparency = 1
+				label.Text = text
+				label.TextColor3 = (i == 1) and rowColor or Theme.TEXT_WHITE
+				label.TextSize = 13
+				label.Font = (i == 1) and Enum.Font.GothamBold or Enum.Font.GothamMedium
+				label.TextXAlignment = Enum.TextXAlignment.Center
+				label.ZIndex = 82
+				label.Parent = resultDataFrame
+				xOffset = xOffset + colWidths[i] + 10
+			end
+		end
+
+		-- MVP 显示
+		local mvp = nil
+		local maxKills = -1
+		for _, pInfo in ipairs(players) do
+			if (pInfo.kills or 0) > maxKills then
+				maxKills = pInfo.kills or 0
+				mvp = pInfo
+			end
+		end
+		if mvp then
+			local mvpLabel = Instance.new("TextLabel")
+			mvpLabel.Size = UDim2.new(1, -40, 0, 24)
+			mvpLabel.Position = UDim2.new(0, 20, 1, -30)
+			mvpLabel.BackgroundTransparency = 1
+			mvpLabel.Text = "⭐ MVP: " .. (mvp.playerName or "?")
+			mvpLabel.TextColor3 = Color3.fromRGB(255, 215, 80)
+			mvpLabel.TextSize = 14
+			mvpLabel.Font = Enum.Font.GothamBold
+			mvpLabel.ZIndex = 82
+			mvpLabel.Parent = resultDataFrame
+		end
+	end
+
+	-- 重置按钮状态
+	if rematchBtn then
+		rematchBtn.Text = "🔄 再来一局"
+		rematchBtn.Active = true
+		rematchBtn.BackgroundColor3 = Color3.fromRGB(60, 140, 60)
+	end
+end
+
+--- 隐藏结算界面
+function UI_HUD.HideResult()
+	if newResultScreen then
+		newResultScreen.Visible = false
+	end
+end
+
+--- 隐藏所有游戏流程UI
+function UI_HUD.HideAllFlowUI()
+	UI_HUD.HideWaiting()
+	UI_HUD.HideBattleCountdown()
+	UI_HUD.HideResult()
 end
 
 return UI_HUD

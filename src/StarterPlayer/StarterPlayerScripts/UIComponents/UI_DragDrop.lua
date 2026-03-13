@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local EquipSkillEvent = ReplicatedStorage:WaitForChild("EquipSkillEvent")
-local SyncRuneEvent = ReplicatedStorage:WaitForChild("SyncRuneEvent")
+local EquipSkillEvent = ReplicatedStorage:WaitForChild("EquipSkillEvent", 10)
+local SyncRuneEvent = ReplicatedStorage:WaitForChild("SyncRuneEvent", 10)
 local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
 local RuneConfig = require(ReplicatedStorage:WaitForChild("RuneConfig"))
 local ItemConfig = require(ReplicatedStorage:WaitForChild("ItemConfig"))
@@ -27,7 +27,7 @@ local lastClickTime = 0
 -- Tooltip system
 local tooltipFrame = nil
 local tooltipHoverThread = nil
-local SyncEquipEvent = ReplicatedStorage:WaitForChild("SyncEquipEvent")
+local SyncEquipEvent = ReplicatedStorage:WaitForChild("SyncEquipEvent", 10)
 
 local STAT_DISPLAY_NAMES = {
 	MaxHP = "HP", MaxMP = "MP", ATK = "ATK", AP = "AP",

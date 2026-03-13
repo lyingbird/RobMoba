@@ -5,8 +5,10 @@
 .DS_Store
 Thumbs.db
 
-# CodeBuddy / Claude Code 个人数据
-.codebuddy/
+# CodeBuddy 个人数据（不跟踪）
+.codebuddy/memory/
+.codebuddy/plans/
+.codebuddy/agents/
 
 # Claude Code 个人配置
 .claude/

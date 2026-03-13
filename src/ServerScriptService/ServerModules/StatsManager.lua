@@ -191,7 +191,12 @@ function StatsManager.Init()
 	end)
 
 	-- Listen for equipment changes
-	local SyncEquipEvent = ReplicatedStorage:WaitForChild("SyncEquipEvent")
+	local SyncEquipEvent = ReplicatedStorage:FindFirstChild("SyncEquipEvent")
+	if not SyncEquipEvent then
+		SyncEquipEvent = Instance.new("RemoteEvent")
+		SyncEquipEvent.Name = "SyncEquipEvent"
+		SyncEquipEvent.Parent = ReplicatedStorage
+	end
 	SyncEquipEvent.OnServerEvent:Connect(function(player, slotKey, itemID)
 		if typeof(slotKey) ~= "string" then return end
 

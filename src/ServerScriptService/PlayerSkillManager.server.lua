@@ -6,11 +6,21 @@ local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
 local RuneConfig = require(ReplicatedStorage:WaitForChild("RuneConfig"))
 local InventoryManager = require(ServerScriptService.ServerModules:WaitForChild("InventoryManager"))
 
-local CastSkillEvent = ReplicatedStorage:WaitForChild("CastSkillEvent")
-local EquipSkillEvent = ReplicatedStorage:WaitForChild("EquipSkillEvent")
-local SyncCooldownEvent = ReplicatedStorage:WaitForChild("SyncCooldownEvent")
-local SyncRuneEvent = ReplicatedStorage:WaitForChild("SyncRuneEvent")
-local SyncRecastEvent = ReplicatedStorage:WaitForChild("SyncRecastEvent")
+local function ensureRemoteEvent(name)
+	local event = ReplicatedStorage:FindFirstChild(name)
+	if not event then
+		event = Instance.new("RemoteEvent")
+		event.Name = name
+		event.Parent = ReplicatedStorage
+	end
+	return event
+end
+
+local CastSkillEvent = ensureRemoteEvent("CastSkillEvent")
+local EquipSkillEvent = ensureRemoteEvent("EquipSkillEvent")
+local SyncCooldownEvent = ensureRemoteEvent("SyncCooldownEvent")
+local SyncRuneEvent = ensureRemoteEvent("SyncRuneEvent")
+local SyncRecastEvent = ensureRemoteEvent("SyncRecastEvent")
 
 local playerActiveSkills = {}
 local playerItemRunes = {}

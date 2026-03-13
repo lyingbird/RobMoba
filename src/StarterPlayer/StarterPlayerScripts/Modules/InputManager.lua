@@ -13,8 +13,27 @@ local UIManager = require(script.Parent.Parent:WaitForChild("UIManager"))
 local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
 local CinematicManager = require(script.Parent:WaitForChild("CinematicManager"))
 
-local SkillDirectionEvent = ReplicatedStorage:WaitForChild("SkillDirectionEvent")
-local AttackTargetEvent = ReplicatedStorage:WaitForChild("AttackTargetEvent")
+-- 全局启用/禁用开关（由 GameManager 状态控制）
+local inputEnabled = true
+
+-- RemoteEvents（懒加载，避免在 require 时阻塞）
+local SkillDirectionEvent = nil
+local AttackTargetEvent = nil
+
+local function getSkillDirectionEvent()
+	if not SkillDirectionEvent then
+		SkillDirectionEvent = ReplicatedStorage:FindFirstChild("SkillDirectionEvent")
+	end
+	return SkillDirectionEvent
+end
+
+local function getAttackTargetEvent()
+	if not AttackTargetEvent then
+		AttackTargetEvent = ReplicatedStorage:FindFirstChild("AttackTargetEvent")
+	end
+	return AttackTargetEvent
+end
+
 local Players = game:GetService("Players")
 local isChanneling = false
 
@@ -235,6 +254,8 @@ function InputManager.Init()
 	CinematicManager.Init()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		-- 全局禁用时屏蔽所有输入
+		if not inputEnabled then return end
 		-- 电影特写期间屏蔽所有输入
 		if CinematicManager.IsPlaying() then return end
 		local isSkillKey = VALID_SKILL_KEYS[input.KeyCode] ~= nil
@@ -465,7 +486,10 @@ function InputManager.Init()
 
 		-- 引导技能鼠标方向发送
 		if isChanneling then
-			SkillDirectionEvent:FireServer(mouse.Hit.Position)
+			local dirEvent = getSkillDirectionEvent()
+			if dirEvent then
+				dirEvent:FireServer(mouse.Hit.Position)
+			end
 		end
 
 		-- 鼠标悬停敌人高亮
@@ -518,7 +542,10 @@ function InputManager.Init()
 					rootPart.CFrame = CFrame.lookAt(rootPart.Position, Vector3.new(targetRoot.Position.X, rootPart.Position.Y, targetRoot.Position.Z))
 					if os.clock() - lastAttackTime >= ATTACK_INTERVAL then
 						lastAttackTime = os.clock()
-						AttackTargetEvent:FireServer(attackTarget)
+						local atkEvent = getAttackTargetEvent()
+						if atkEvent then
+							atkEvent:FireServer(attackTarget)
+						end
 					end
 				else
 					character.Humanoid:MoveTo(targetRoot.Position)
@@ -648,6 +675,27 @@ function InputManager.Init()
 			end
 		end
 	end)
+end
+
+--- 设置输入系统启用/禁用
+--- @param enabled boolean
+function InputManager.SetEnabled(enabled)
+	inputEnabled = enabled
+	if not enabled then
+		-- 禁用时停止移动和攻击
+		MovementManager.StopMovement()
+		attackTarget = nil
+		isRightMouseDown = false
+		if currentState == "AIMING" or currentState == "CASTING" then
+			currentState = "IDLE"
+		end
+	end
+	print(("[InputManager] Input %s"):format(enabled and "enabled" or "disabled"))
+end
+
+--- 获取当前启用状态
+function InputManager.IsEnabled()
+	return inputEnabled
 end
 
 return InputManager

@@ -1,0 +1,62 @@
+---
+description: 当用户使用 /agent 命令或要求使用 agent 流水线处理需求时，激活此规则。
+alwaysApply: false
+enabled: true
+updatedAt: 2026-03-13T08:00:57.821Z
+provider: 
+---
+
+# RobMoba 游戏开发流水线 Agent 系统
+
+## 激活条件
+
+当用户使用 `/agent`、`/gd:` 命令或明确要求使用 Agent 流水线时，激活本规则。
+
+## ⚡ 执行流程
+
+1. 读取主规则: `.codebuddy/rules/rule.md`（始终生效，自动加载）
+2. 需求进入 → 制作人 Agent 分类 → 按类型走对应流转路径
+3. 每个阶段按需加载对应 Agent 入口文件 + 当前步骤文件
+
+## 📁 规则体系文件
+
+| 文件 | 作用 | 加载方式 |
+|------|------|---------|
+| `rules/rule.md` | 主规则（核心理念、原则） | always（自动） |
+| `rules/rule_workflow.md` | 需求类型与流转路径 | 手动（执行流水线时） |
+| `rules/rule_commands.md` | `/gd:` 快捷命令体系 | 手动（使用命令时） |
+| `rules/rule_guards.md` | 事件驱动守卫规则 | 手动（编码/文件操作时） |
+| `rules/rule_iteration.md` | 迭代机制与知识库 | 手动（内省/迭代时） |
+| `rules/agents/主从Agent架构.md` | 主从架构详细说明 | 手动（复杂任务时） |
+
+## 🤖 Agent 角色路径表
+
+| # | Agent | 入口文件 | 步骤目录 |
+|---|-------|---------|---------|
+| 00 | 🎬 制作人 | `rules/agents/00_制作人Agent.md` | `rules/agents/00_制作人Agent/` |
+| 01 | 📊 项目管理 | `rules/agents/01_项目管理Agent.md` | `rules/agents/01_项目管理Agent/` |
+| 02 | 📋 策划 | `rules/agents/02_策划Agent.md` | `rules/agents/02_策划Agent/` |
+| 03 | 🔧 主程 | `rules/agents/03_主程Agent.md` | `rules/agents/03_主程Agent/` |
+| 04 | 💻 程序 | `rules/agents/04_程序Agent.md` | `rules/agents/04_程序Agent/` |
+| 05 | 🎨 美术 | `rules/agents/05_美术Agent.md` | `rules/agents/05_美术Agent/` |
+| 06 | 🧪 QA | `rules/agents/06_QAAgent.md` | `rules/agents/06_QAAgent/` |
+| 07 | ✨ UX | `rules/agents/07_UXAgent.md` | `rules/agents/07_UXAgent/` |
+
+## 需求类型与流转路径（速查）
+
+| 类型 | 路径 | 跳过 |
+|------|------|------|
+| FEATURE | 制作人→项目管理→策划→[UX]→主程→程序→QA→策划(交付) | 无 |
+| BUGFIX | 制作人→项目管理→程序→QA→策划(交付) | 策划/UX/美术/主程 |
+| OPTIMIZE | 制作人→项目管理→主程→程序→QA→策划(交付) | 策划/UX/美术 |
+| CONFIG | 制作人→项目管理→程序→QA→策划(交付) | 策划/UX/美术/主程 |
+| RESEARCH | 制作人→策划 | 大部分 Agent |
+
+## 关键规则
+
+1. **角色边界**: 每个 Agent 只做自己的事，禁止越界
+2. **工作流优先**: 任何修改必须走对应流程，禁止"小修改"思维
+3. **主从模式**: L/XL 规模需求自动触发，子 Agent 在独立上下文执行
+4. **质量门禁**: 策划→主程、主程→程序、程序→QA 三道质量检查
+5. **对抗审查**: 程序 Agent 自审代码需找出 ≥3 个潜在问题
+6. **`/gd:` 命令**: 快捷入口不绕过流程，制作人有最终决定权

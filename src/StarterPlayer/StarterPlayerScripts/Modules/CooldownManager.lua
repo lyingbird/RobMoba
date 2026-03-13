@@ -35,18 +35,22 @@ function CooldownManager.IsInRecast(skillID)
 	return recastSkills[skillID] == true
 end
 
-local SyncCooldownEvent = ReplicatedStorage:WaitForChild("SyncCooldownEvent")
-SyncCooldownEvent.OnClientEvent:Connect(function(_key, duration, skillID)
-	if skillID then
-		CooldownManager.Start(skillID, duration)
-		-- When real cooldown starts, clear recast state
-		CooldownManager.SetRecast(skillID, false)
-	end
-end)
+local SyncCooldownEvent = ReplicatedStorage:WaitForChild("SyncCooldownEvent", 10)
+if SyncCooldownEvent then
+	SyncCooldownEvent.OnClientEvent:Connect(function(_key, duration, skillID)
+		if skillID then
+			CooldownManager.Start(skillID, duration)
+			-- When real cooldown starts, clear recast state
+			CooldownManager.SetRecast(skillID, false)
+		end
+	end)
+end
 
-local SyncRecastEvent = ReplicatedStorage:WaitForChild("SyncRecastEvent")
-SyncRecastEvent.OnClientEvent:Connect(function(skillID, isRecast)
-	CooldownManager.SetRecast(skillID, isRecast)
-end)
+local SyncRecastEvent = ReplicatedStorage:WaitForChild("SyncRecastEvent", 10)
+if SyncRecastEvent then
+	SyncRecastEvent.OnClientEvent:Connect(function(skillID, isRecast)
+		CooldownManager.SetRecast(skillID, isRecast)
+	end)
+end
 
 return CooldownManager

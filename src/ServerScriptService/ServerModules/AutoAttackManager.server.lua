@@ -8,7 +8,17 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local AttackTargetEvent = ReplicatedStorage:WaitForChild("AttackTargetEvent")
+local function ensureRemoteEvent(name)
+	local event = ReplicatedStorage:FindFirstChild(name)
+	if not event then
+		event = Instance.new("RemoteEvent")
+		event.Name = name
+		event.Parent = ReplicatedStorage
+	end
+	return event
+end
+
+local AttackTargetEvent = ensureRemoteEvent("AttackTargetEvent")
 local CombatUtils = require(ServerScriptService.ServerModules:WaitForChild("CombatUtils"))
 
 local ATTACK_RANGE = 12

@@ -639,7 +639,11 @@ end
 
 -- ========== 初始化：监听服务端电影事件 ==========
 function CinematicManager.Init()
-	local CinematicEvent = ReplicatedStorage:WaitForChild("CinematicEvent")
+	local CinematicEvent = ReplicatedStorage:WaitForChild("CinematicEvent", 10)
+	if not CinematicEvent then
+		warn("[CinematicManager] CinematicEvent not found!")
+		return
+	end
 	CinematicEvent.OnClientEvent:Connect(function(cinematicName, targetPos)
 		if cinematicName == "LianPoUltimate" then
 			CinematicManager.PlayLianPoUltimate(targetPos)
