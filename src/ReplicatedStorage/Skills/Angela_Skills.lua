@@ -65,6 +65,7 @@ return {
 		Range = 60,
 		EnergyCost = 100,
 		CastRule = "Direction",
+		aimType = "channel", -- 触屏: 点按开始引导(Channel+TrackMouse)
 		ArchetypeType = "Beam",
 		IsUltimate = true,
 		-- Archetype 参数

@@ -15,6 +15,8 @@ local targetCharacter = nil
 local targetRootPart = nil -- 【优化 2】：新增一个变量，专门用来存演员的"躯干"
 local updateConnection = nil
 local isPaused = false
+local mobileMode = false          -- REQ-011: 移动端Lerp平滑模式开关
+local SMOOTH_FACTOR = 0.15        -- REQ-011: 默认平滑系数, SetMobileMode时从MobileConfig覆盖
 
 function CameraManager.SetSpaceLock(isLocked)
 end
@@ -62,9 +64,41 @@ function CameraManager.Update(deltaTime)
 	end
 
 	local cameraLookTarget = targetRootPart.Position
+	local targetCFrame = CFrame.new(cameraLookTarget + CAMERA_OFFSET, cameraLookTarget)
 
-	-- 【优化 1 & 2】：没有任何新建对象的运算，纯粹的极速读取！
-	camera.CFrame = CFrame.new(cameraLookTarget + CAMERA_OFFSET, cameraLookTarget)
+	if mobileMode then
+		-- 移动端: Lerp平滑跟随, 减少抖动
+		camera.CFrame = camera.CFrame:Lerp(targetCFrame, SMOOTH_FACTOR)
+	else
+		-- PC端: 原有直接赋值(无平滑)
+		camera.CFrame = targetCFrame
+	end
+end
+
+-- ==========================================
+-- 【新增】移动端模式接口 (REQ-011)
+-- ==========================================
+-- 启用/禁用移动端Lerp平滑跟随
+function CameraManager.SetMobileMode(enabled)
+	mobileMode = enabled
+	if enabled then
+		-- 尝试从MobileConfig读取参数
+		local ok, MobileConfig = pcall(function()
+			return require(script.Parent:WaitForChild("MobileConfig", 2))
+		end)
+		if ok and MobileConfig then
+			SMOOTH_FACTOR = MobileConfig.CAMERA_SMOOTH_FACTOR or 0.15
+			CAMERA_OFFSET = Vector3.new(
+				0,
+				MobileConfig.CAMERA_MOBILE_HEIGHT or CAMERA_HEIGHT,
+				MobileConfig.CAMERA_MOBILE_DEPTH or CAMERA_DEPTH
+			)
+		end
+	end
+end
+
+function CameraManager.IsMobileMode()
+	return mobileMode
 end
 
 return CameraManager

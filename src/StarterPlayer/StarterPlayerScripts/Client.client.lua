@@ -5,10 +5,21 @@
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
 local Modules = script.Parent:WaitForChild("Modules")
 local UIComponents = script.Parent:WaitForChild("UIComponents")
+
+-- REQ-012: 调试开关优先于自动检测
+local MobileConfig = require(Modules:WaitForChild("MobileConfig"))
+
+-- 设备检测: DEBUG_FORCE_MOBILE 开关优先，否则 有触屏且无键盘 → 移动端
+local isMobile = MobileConfig.DEBUG_FORCE_MOBILE or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+
+if MobileConfig.DEBUG_FORCE_MOBILE and not (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled) then
+	warn("[Client] ⚠️ DEBUG_FORCE_MOBILE 已启用 — PC上使用移动端布局（调试模式）")
+end
 
 local CameraManager = require(Modules:WaitForChild("CameraManager"))
 local MovementManager = require(Modules:WaitForChild("MovementManager"))
@@ -32,6 +43,7 @@ local MatchmakingEvent = ReplicatedStorage:WaitForChild("MatchmakingEvent", 10)
 -- ========== 状态变量 ==========
 local selectedHeroID = nil
 local systemsInitialized = false
+local mobileInputManagerRef = nil -- REQ-011: 移动端InputManager引用(仅移动端有值)
 
 -- ========== 角色加载处理 ==========
 local function onCharacterAdded(character)
@@ -118,7 +130,54 @@ local function onHeroConfirmed(heroId)
 
 	-- 初始化输入系统（仅首次）
 	if not systemsInitialized then
-		InputManager.Init()
+		if isMobile then
+			-- ========== 移动端路径 (REQ-011) ==========
+			local MobileInputManager = require(Modules:WaitForChild("MobileInputManager"))
+			local UI_VirtualJoystick = require(UIComponents:WaitForChild("UI_VirtualJoystick"))
+			local UI_SkillButtons = require(UIComponents:WaitForChild("UI_SkillButtons"))
+
+			-- 摄像机切换到移动端Lerp平滑模式
+			CameraManager.SetMobileMode(true)
+
+			-- 获取MobileHUD容器(使用PlayerGui下的ScreenGui)
+			local playerGui = player:WaitForChild("PlayerGui")
+			local mobileGui = Instance.new("ScreenGui")
+			mobileGui.Name = "MobileUI"
+			mobileGui.ResetOnSpawn = false
+			mobileGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+			mobileGui.Parent = playerGui
+
+			local mobileFrame = Instance.new("Frame")
+			mobileFrame.Name = "MobileFrame"
+			mobileFrame.Size = UDim2.new(1, 0, 1, 0)
+			mobileFrame.BackgroundTransparency = 1
+			mobileFrame.Parent = mobileGui
+
+			-- 初始化虚拟摇杆
+			UI_VirtualJoystick.Init(mobileFrame)
+
+			-- 获取英雄技能栏配置给技能按钮
+			local mobileHeroData = HeroRegistry[heroId]
+			local skillSlots = mobileHeroData and mobileHeroData.Skills or {}
+			UI_SkillButtons.Init(mobileFrame, skillSlots)
+
+			-- 初始化输入管理器(聚合摇杆+技能输入)
+			if player.Character then
+				MobileInputManager.Init(player.Character, {
+					joystick = UI_VirtualJoystick,
+					skillButtons = UI_SkillButtons,
+					MovementManager = MovementManager,
+					CameraManager = CameraManager,
+				})
+			end
+
+			mobileInputManagerRef = MobileInputManager -- 保存引用供DuelEvent使用
+
+			print("[Client] 移动端输入系统初始化完成")
+		else
+			-- ========== PC端路径 (原有逻辑) ==========
+			InputManager.Init()
+		end
 		systemsInitialized = true
 	end
 
@@ -180,7 +239,11 @@ if DuelEvent then
 				UI_HUD.HideBattleCountdown()
 			end
 			if systemsInitialized then
-				InputManager.SetEnabled(true)
+				if mobileInputManagerRef then
+					mobileInputManagerRef.SetEnabled(true)
+				else
+					InputManager.SetEnabled(true)
+				end
 			end
 
 		elseif data.type == "result" then
@@ -189,7 +252,11 @@ if DuelEvent then
 				UI_HUD.ShowResult(data)
 			end
 			if systemsInitialized then
-				InputManager.SetEnabled(false)
+				if mobileInputManagerRef then
+					mobileInputManagerRef.SetEnabled(false)
+				else
+					InputManager.SetEnabled(false)
+				end
 			end
 		end
 	end)

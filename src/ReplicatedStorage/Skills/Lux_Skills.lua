@@ -85,6 +85,7 @@ return {
 		Range = 45,
 		EnergyCost = 60,
 		CastRule = "Position",
+		aimType = "area", -- 触屏: 按住拖拽选位置释放(圆形范围)
 		ArchetypeType = "Area",
 		-- Archetype 参数
 		Radius = 15,

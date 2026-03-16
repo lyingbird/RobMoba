@@ -13,6 +13,7 @@ return {
 		Range = 20,
 		EnergyCost = 50,
 		CastRule = "Instant",
+		aimType = "self", -- 触屏: 点按即释放(自我增益)
 		ArchetypeType = "Instant",
 		-- Archetype 参数
 		SelfEffects = { 3040 },
@@ -33,6 +34,7 @@ return {
 		Range = 45,
 		EnergyCost = 70,
 		CastRule = "Position",
+		aimType = "area", -- 触屏: 按住拖拽选位置释放(范围AOE)
 		ArchetypeType = "Area",
 		-- Archetype 参数
 		Radius = 12,
@@ -52,6 +54,7 @@ return {
 		Range = 100,
 		EnergyCost = 100,
 		CastRule = "Direction",
+		aimType = "directional", -- 触屏: 按住拖拽方向释放
 		ArchetypeType = "Projectile",
 		IsUltimate = true,
 		-- Archetype 参数 (复合: 命中后落点爆炸)

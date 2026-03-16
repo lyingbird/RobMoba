@@ -2,16 +2,57 @@ local MovementManager = {}
 
 local player = game.Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- 移动模式: "PATHFIND" (PC端原有) / "DIRECT" (摇杆模式)
+local moveMode = "PATHFIND"
+local moveDirection = Vector3.zero
+local cachedHumanoid = nil
+local directMoveConnection = nil
 
 -- 初始化角色状态
 function MovementManager.Init(character)
 	local humanoid = character:WaitForChild("Humanoid")
+	cachedHumanoid = humanoid
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 
 	-- 封杀系统默认移动 (WASD)
 	local PlayerModule = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
 	local controls = PlayerModule:GetControls()
 	controls:Disable()
+
+	-- 清理旧连接(角色重生时)
+	if directMoveConnection then
+		directMoveConnection:Disconnect()
+		directMoveConnection = nil
+	end
+
+	-- RenderStepped: 摇杆持续方向移动
+	directMoveConnection = RunService.RenderStepped:Connect(function()
+		if moveMode == "DIRECT" and cachedHumanoid and cachedHumanoid.Parent then
+			if moveDirection ~= Vector3.zero then
+				cachedHumanoid:Move(moveDirection)
+			else
+				cachedHumanoid:Move(Vector3.zero)
+			end
+		end
+	end)
+end
+
+-- ==========================================
+-- 【新增】摇杆方向移动API
+-- ==========================================
+-- 设置持续移动方向 (Vector3.zero = 停止)
+function MovementManager.SetMoveDirection(direction)
+	moveDirection = direction
+	if direction ~= Vector3.zero then
+		moveMode = "DIRECT"
+	end
+end
+
+-- 获取当前移动模式
+function MovementManager.GetMoveMode()
+	return moveMode
 end
 
 -- ==========================================

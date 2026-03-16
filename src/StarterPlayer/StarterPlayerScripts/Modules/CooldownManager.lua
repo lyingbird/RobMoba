@@ -35,9 +35,21 @@ function CooldownManager.IsInRecast(skillID)
 	return recastSkills[skillID] == true
 end
 
+-- REQ-013: 重置所有技能冷却（训练场CD开关等场景使用）
+function CooldownManager.ResetAll()
+	for skillID, cd in pairs(cooldowns) do
+		cd.EndTime = 0
+	end
+end
+
 local SyncCooldownEvent = ReplicatedStorage:WaitForChild("SyncCooldownEvent", 10)
 if SyncCooldownEvent then
 	SyncCooldownEvent.OnClientEvent:Connect(function(_key, duration, skillID)
+		-- REQ-013: 服务端发送 "ALL" 标记时，重置所有技能CD
+		if _key == "ALL" then
+			CooldownManager.ResetAll()
+			return
+		end
 		if skillID then
 			CooldownManager.Start(skillID, duration)
 			-- When real cooldown starts, clear recast state

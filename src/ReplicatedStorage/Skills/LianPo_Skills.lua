@@ -108,6 +108,7 @@ return {
 		Range = 0,           -- 自身释放
 		EnergyCost = 0,
 		CastRule = "Instant",
+		aimType = "self", -- 触屏: 点按即释放(自身护盾+AOE)
 		ArchetypeType = "Instant",
 		-- Archetype 参数
 		SelfEffects = { 105250 },       -- 护盾 base=400+80/lv 5s
@@ -141,6 +142,7 @@ return {
 		Range = 5,           -- HoK: 指示器范围5000 ÷1000
 		EnergyCost = 0,
 		CastRule = "Position",
+		aimType = "area", -- 触屏: 按住拖拽选位置释放(范围AOE)
 		ArchetypeType = "Area",
 		IsUltimate = true,
 		-- Archetype 参数 (3段跺地, 重写OnCast)
