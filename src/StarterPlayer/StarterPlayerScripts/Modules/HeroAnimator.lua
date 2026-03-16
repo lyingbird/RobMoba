@@ -16,6 +16,8 @@ local HeroAnimator = {}
 
 local STATE = { IDLE = "Idle", CAST = "Cast", CHANNEL = "Channel" }
 
+local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
+
 local character, humanoid, animator, config
 local joints, defaultC0 = {}, {}
 local currentState = STATE.IDLE
@@ -31,6 +33,8 @@ local targetLift = 0
 local bodyPosMover = nil
 local moveLocked = false
 local moveLockRule = "none" -- "none"/"until_fire"/"full"
+local idleTrack = nil
+local idleAnimation = nil
 
 local JOINT_MAP = {
 	{ name = "Root", parent = "LowerTorso" },
@@ -157,6 +161,21 @@ local function stopDefaultAnimations()
 	end
 end
 
+local function playIdleAnimation()
+	if not animator or not idleAnimation then return end
+	if idleTrack and idleTrack.IsPlaying then return end
+	idleTrack = animator:LoadAnimation(idleAnimation)
+	idleTrack.Looped = true
+	idleTrack.Priority = Enum.AnimationPriority.Movement
+	idleTrack:Play(0.3)
+end
+
+local function stopIdleAnimation()
+	if idleTrack and idleTrack.IsPlaying then
+		idleTrack:Stop(0.3)
+	end
+end
+
 local function resumeDefaultAnimations()
 	for name, joint in pairs(joints) do
 		if defaultC0[name] then joint.C0 = defaultC0[name] end
@@ -167,6 +186,8 @@ local function resumeDefaultAnimations()
 	if bookModel and bookModel.Parent and config and config.Accessory then
 		bookModel.Size = config.Accessory.Size
 	end
+	-- 播放自定义待机动画
+	playIdleAnimation()
 end
 
 -- === Float ===
@@ -250,6 +271,7 @@ local function setState(newState, key)
 		return
 	end
 
+	stopIdleAnimation()
 	stopDefaultAnimations()
 
 	-- 设置移动锁定
@@ -429,9 +451,31 @@ function HeroAnimator.Init(char, heroID)
 	if not config then warn("[HeroAnimator] Unknown hero: " .. tostring(heroID)); return end
 	cacheJoints()
 	if config.Accessory then createBook() end
+	-- 从 ReplicatedStorage 注册自定义待机动画
+	local idleKFS = ReplicatedStorage:FindFirstChild("IdleAnimation")
+	if idleKFS then
+		local ok, cid = pcall(function()
+			return KeyframeSequenceProvider:RegisterKeyframeSequence(idleKFS)
+		end)
+		if ok and cid then
+			idleAnimation = Instance.new("Animation")
+			idleAnimation.AnimationId = cid
+			print("[HeroAnimator] Idle anim registered: " .. cid)
+		else
+			warn("[HeroAnimator] Idle register failed: " .. tostring(cid))
+		end
+	else
+		warn("[HeroAnimator] No IdleAnimation in ReplicatedStorage")
+	end
 	currentState = STATE.IDLE
 	castPhase = "none"
 	renderConn = RunService.RenderStepped:Connect(onRenderStep)
+	-- 延迟播放待机动画，等角色完全加载
+	task.delay(0.5, function()
+		if currentState == STATE.IDLE then
+			playIdleAnimation()
+		end
+	end)
 	print("[HeroAnimator] Init: " .. config.DisplayName)
 end
 
@@ -450,6 +494,7 @@ function HeroAnimator.TryInterrupt()
 end
 
 function HeroAnimator.Cleanup()
+	stopIdleAnimation()
 	if renderConn then renderConn:Disconnect(); renderConn = nil end
 	stopFloat()
 	if bookModel and bookModel.Parent then
