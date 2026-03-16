@@ -36,6 +36,13 @@ local REMOTE_EVENTS = {
 	"DuelEvent",
 	"HeroSwapEvent",
 
+	-- 能量系统同步 (REQ-007)
+	"SyncEnergyEvent",
+
+	-- 训练场 (REQ-009)
+	"TrainingEvent",
+	"TrainingSyncEvent",
+
 	-- 注意: 以下由 GameManager / MatchSystem 自己创建，这里也确保存在
 	-- "GameStateEvent",
 	-- "BattleStartEvent",

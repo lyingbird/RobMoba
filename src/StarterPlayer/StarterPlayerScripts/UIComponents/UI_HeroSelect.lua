@@ -12,8 +12,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local Theme = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("UITheme"))
-local HeroConfig = require(ReplicatedStorage:WaitForChild("HeroConfig"))
-local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
+local HeroRegistry = require(ReplicatedStorage:WaitForChild("HeroRegistry"))
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 
 local UI_HeroSelect = {}
 
@@ -30,11 +30,50 @@ local isLocked = false
 local isShowing = false       -- 全屏面板是否正在显示
 local onHeroConfirmed = nil   -- 英雄确认后的回调函数
 
--- 英雄显示顺序
-local HERO_ORDER = { "Angela", "Lux", "HouYi", "LianPo", "Test" }
+-- REQ-007: Tab 筛选相关
+local currentTab = "All"
+local tabButtons = {}
+local cardContainer = nil     -- 卡片容器引用 (ScrollingFrame 内部)
+local scrollFrame = nil       -- ScrollingFrame 引用
+
+-- 职业映射
+local ROLE_MAP = {
+	Mage = "法师",
+	Marksman = "射手",
+	Tank = "坦克",
+	Assassin = "刺客",
+	Support = "辅助",
+	Fighter = "战士",
+}
+
+-- Tab 定义
+local TABS = {
+	{ key = "All", label = "全部", role = nil },
+	{ key = "Mage", label = "法师", role = "Mage" },
+	{ key = "Marksman", label = "射手", role = "Marksman" },
+	{ key = "Tank", label = "坦克", role = "Tank" },
+	{ key = "Assassin", label = "刺客", role = "Assassin" },
+	{ key = "Support", label = "辅助", role = "Support" },
+	{ key = "Fighter", label = "战士", role = "Fighter" },
+}
+
+-- 英雄显示顺序：从 HeroRegistry 自动派生（过滤 Enabled，按 SortOrder 排序）
+local HERO_ORDER = {}
+do
+	for heroName, heroData in pairs(HeroRegistry) do
+		if heroData.Enabled ~= false then
+			table.insert(HERO_ORDER, heroName)
+		end
+	end
+	table.sort(HERO_ORDER, function(a, b)
+		local sa = HeroRegistry[a].SortOrder or 999
+		local sb = HeroRegistry[b].SortOrder or 999
+		return sa < sb
+	end)
+end
 
 local function createSkillIcon(parent, skillID, size)
-	local data = SkillConfig[skillID]
+	local data = SkillRegistry[skillID]
 	if not data then return end
 
 	local frame = Instance.new("Frame")
@@ -71,7 +110,7 @@ end
 local function createHeroCard(heroKey, heroData, parent)
 	local card = Instance.new("Frame")
 	card.Name = "Card_" .. heroKey
-	card.Size = UDim2.new(0, 180, 0, 280)
+	card.Size = UDim2.new(0, 160, 0, 240)
 	card.BackgroundColor3 = Theme.HUD_BG
 	card.BackgroundTransparency = 0.1
 	card.BorderSizePixel = 0
@@ -89,7 +128,7 @@ local function createHeroCard(heroKey, heroData, parent)
 
 	-- 顶部主题色条
 	local topBar = Instance.new("Frame")
-	topBar.Size = UDim2.new(1, 0, 0, 6)
+	topBar.Size = UDim2.new(1, 0, 0, 5)
 	topBar.Position = UDim2.new(0, 0, 0, 0)
 	topBar.BackgroundColor3 = heroData.Theme
 	topBar.BorderSizePixel = 0
@@ -100,13 +139,13 @@ local function createHeroCard(heroKey, heroData, parent)
 
 	-- 英雄头像区域（主题色圆形）
 	local avatarFrame = Instance.new("Frame")
-	avatarFrame.Size = UDim2.new(0, 80, 0, 80)
-	avatarFrame.Position = UDim2.new(0.5, -40, 0, 24)
+	avatarFrame.Size = UDim2.new(0, 64, 0, 64)
+	avatarFrame.Position = UDim2.new(0.5, -32, 0, 16)
 	avatarFrame.BackgroundColor3 = heroData.Theme
 	avatarFrame.BackgroundTransparency = 0.3
 	avatarFrame.BorderSizePixel = 0
 	avatarFrame.Parent = card
-	Theme.corner(avatarFrame, 40)
+	Theme.corner(avatarFrame, 32)
 
 	-- 英雄首字母
 	local initial = Instance.new("TextLabel")
@@ -114,49 +153,63 @@ local function createHeroCard(heroKey, heroData, parent)
 	initial.BackgroundTransparency = 1
 	initial.Text = string.sub(heroData.DisplayName, 1, 3)
 	initial.TextColor3 = Color3.new(1, 1, 1)
-	initial.TextSize = 24
+	initial.TextSize = 20
 	initial.Font = Enum.Font.GothamBold
 	initial.Parent = avatarFrame
 
 	-- 英雄名称
 	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, 0, 0, 28)
-	nameLabel.Position = UDim2.new(0, 0, 0, 110)
+	nameLabel.Size = UDim2.new(1, 0, 0, 22)
+	nameLabel.Position = UDim2.new(0, 0, 0, 86)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = heroData.DisplayName
 	nameLabel.TextColor3 = Theme.TEXT_WHITE
-	nameLabel.TextSize = 20
+	nameLabel.TextSize = 16
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.Parent = card
 
-	-- 英雄ID副标题
-	local subLabel = Instance.new("TextLabel")
-	subLabel.Size = UDim2.new(1, 0, 0, 18)
-	subLabel.Position = UDim2.new(0, 0, 0, 136)
-	subLabel.BackgroundTransparency = 1
-	subLabel.Text = heroData.HeroID
-	subLabel.TextColor3 = Theme.TEXT_MID
-	subLabel.TextSize = 12
-	subLabel.Font = Enum.Font.GothamMedium
-	subLabel.Parent = card
+	-- REQ-007: 职业中文名
+	local roleName = ROLE_MAP[heroData.Role] or heroData.Role or "未知"
+	local roleLabel = Instance.new("TextLabel")
+	roleLabel.Size = UDim2.new(1, 0, 0, 16)
+	roleLabel.Position = UDim2.new(0, 0, 0, 108)
+	roleLabel.BackgroundTransparency = 1
+	roleLabel.Text = roleName
+	roleLabel.TextColor3 = Theme.TEXT_MID
+	roleLabel.TextSize = 10
+	roleLabel.Font = Enum.Font.GothamMedium
+	roleLabel.Parent = card
+
+	-- REQ-007: 难度星级
+	local difficulty = heroData.Difficulty or 1
+	local starStr = string.rep("★", difficulty) .. string.rep("☆", 3 - difficulty)
+	local starLabel = Instance.new("TextLabel")
+	starLabel.Size = UDim2.new(1, 0, 0, 16)
+	starLabel.Position = UDim2.new(0, 0, 0, 122)
+	starLabel.BackgroundTransparency = 1
+	starLabel.Text = starStr
+	starLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+	starLabel.TextSize = 12
+	starLabel.Font = Enum.Font.GothamMedium
+	starLabel.Parent = card
 
 	-- 技能图标行
 	local skillRow = Instance.new("Frame")
-	skillRow.Size = UDim2.new(1, -20, 0, 60)
-	skillRow.Position = UDim2.new(0, 10, 0, 164)
+	skillRow.Size = UDim2.new(1, -16, 0, 50)
+	skillRow.Position = UDim2.new(0, 8, 0, 142)
 	skillRow.BackgroundTransparency = 1
 	skillRow.Parent = card
 
 	local skillLayout = Instance.new("UIListLayout")
 	skillLayout.FillDirection = Enum.FillDirection.Horizontal
 	skillLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	skillLayout.Padding = UDim.new(0, 10)
+	skillLayout.Padding = UDim.new(0, 8)
 	skillLayout.Parent = skillRow
 
 	for _, key in ipairs({"Q", "W", "R"}) do
 		local skillID = heroData.Skills[key]
 		if skillID then
-			createSkillIcon(skillRow, skillID, 42)
+			createSkillIcon(skillRow, skillID, 36)
 		end
 	end
 
@@ -230,7 +283,7 @@ end
 -- ========== 更新左下角小面板 ==========
 local function updateMiniPanel()
 	if not miniPanelGui or not confirmedHeroID then return end
-	local heroData = HeroConfig[confirmedHeroID]
+	local heroData = HeroRegistry[confirmedHeroID]
 	if not heroData then return end
 
 	if miniAvatarLabel then
@@ -434,28 +487,134 @@ function UI_HeroSelect.Show(heroSelectTime)
 		end)
 	end
 
-	-- 英雄卡片容器
-	local cardContainer = Instance.new("Frame")
-	cardContainer.Size = UDim2.new(1, 0, 0, 300)
-	cardContainer.Position = UDim2.new(0, 0, 0.5, -170)
-	cardContainer.BackgroundTransparency = 1
-	cardContainer.Parent = bg
+	-- REQ-007: 职业 Tab 筛选栏
+	local tabBar = Instance.new("Frame")
+	tabBar.Name = "TabBar"
+	tabBar.Size = UDim2.new(1, -100, 0, 36)
+	tabBar.Position = UDim2.new(0, 50, 0, 128)
+	tabBar.BackgroundTransparency = 1
+	tabBar.Parent = bg
 
-	local cardLayout = Instance.new("UIListLayout")
-	cardLayout.FillDirection = Enum.FillDirection.Horizontal
-	cardLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	cardLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	cardLayout.Padding = UDim.new(0, 24)
-	cardLayout.Parent = cardContainer
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	tabLayout.Padding = UDim.new(0, 8)
+	tabLayout.Parent = tabBar
+
+	-- 统计每个职业的英雄数量
+	local roleCounts = {}
+	local totalCount = 0
+	for _, heroKey in ipairs(HERO_ORDER) do
+		local hd = HeroRegistry[heroKey]
+		if hd then
+			totalCount = totalCount + 1
+			local role = hd.Role or "Unknown"
+			roleCounts[role] = (roleCounts[role] or 0) + 1
+		end
+	end
+
+	currentTab = "All"
+	tabButtons = {}
+
+	-- Tab 筛选函数
+	local function applyFilter(tabKey)
+		currentTab = tabKey
+		local visibleCount = 0
+		for heroKey, data in pairs(heroCards) do
+			local hd = HeroRegistry[heroKey]
+			if not hd then continue end
+			local matchesTab = (tabKey == "All") or (hd.Role == tabKey)
+			data.card.Visible = matchesTab
+			if matchesTab then
+				visibleCount = visibleCount + 1
+			end
+		end
+
+		-- 更新 CanvasSize
+		if scrollFrame then
+			local cols = 5
+			local rows = math.ceil(math.max(visibleCount, 1) / cols)
+			scrollFrame.CanvasSize = UDim2.new(0, 0, 0, rows * (240 + 16) + 16)
+			scrollFrame.CanvasPosition = Vector2.new(0, 0) -- 重置滚动位置
+		end
+
+		-- 更新 Tab 高亮
+		for _, tb in pairs(tabButtons) do
+			if tb.key == tabKey then
+				tb.btn.BackgroundColor3 = Color3.fromRGB(60, 90, 180)
+				tb.btn.BackgroundTransparency = 0
+			else
+				tb.btn.BackgroundColor3 = Color3.fromRGB(40, 45, 65)
+				tb.btn.BackgroundTransparency = 0.3
+			end
+		end
+	end
+
+	for _, tabDef in ipairs(TABS) do
+		local count = tabDef.role and (roleCounts[tabDef.role] or 0) or totalCount
+		local hasHeroes = count > 0
+
+		local tabBtn = Instance.new("TextButton")
+		tabBtn.Size = UDim2.new(0, 90, 0, 30)
+		tabBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 65)
+		tabBtn.BackgroundTransparency = 0.3
+		tabBtn.BorderSizePixel = 0
+		tabBtn.Text = tabDef.label .. "(" .. count .. ")"
+		tabBtn.TextColor3 = hasHeroes and Theme.TEXT_WHITE or Color3.fromRGB(80, 80, 90)
+		tabBtn.TextSize = 12
+		tabBtn.Font = Enum.Font.GothamMedium
+		tabBtn.Active = hasHeroes
+		tabBtn.Parent = tabBar
+		Theme.corner(tabBtn, 8)
+
+		if hasHeroes then
+			tabBtn.MouseButton1Click:Connect(function()
+				applyFilter(tabDef.key)
+			end)
+		end
+
+		table.insert(tabButtons, { key = tabDef.key, btn = tabBtn })
+	end
+
+	-- REQ-007: ScrollingFrame + UIGridLayout 卡片容器
+	scrollFrame = Instance.new("ScrollingFrame")
+	scrollFrame.Name = "HeroScrollFrame"
+	scrollFrame.Size = UDim2.new(1, -60, 0.55, 0)
+	scrollFrame.Position = UDim2.new(0, 30, 0, 172)
+	scrollFrame.BackgroundTransparency = 1
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.ScrollBarThickness = 4
+	scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 110, 140)
+	scrollFrame.ScrollBarImageTransparency = 0.3
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- 动态计算
+	scrollFrame.Parent = bg
+
+	cardContainer = Instance.new("Frame")
+	cardContainer.Name = "CardContainer"
+	cardContainer.Size = UDim2.new(1, 0, 1, 0)
+	cardContainer.BackgroundTransparency = 1
+	cardContainer.Parent = scrollFrame
+
+	local gridLayout = Instance.new("UIGridLayout")
+	gridLayout.CellSize = UDim2.new(0, 160, 0, 240)
+	gridLayout.CellPadding = UDim2.new(0, 16, 0, 16)
+	gridLayout.FillDirectionMaxCells = 5
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	gridLayout.Parent = cardContainer
 
 	-- 创建英雄卡片
-	for _, heroKey in ipairs(HERO_ORDER) do
-		local heroData = HeroConfig[heroKey]
+	for idx, heroKey in ipairs(HERO_ORDER) do
+		local heroData = HeroRegistry[heroKey]
 		if heroData then
 			local card = createHeroCard(heroKey, heroData, cardContainer)
+			card.LayoutOrder = idx
 			heroCards[heroKey] = { card = card }
 		end
 	end
+
+	-- 初始化 Tab 为"全部"
+	applyFilter("All")
 
 	-- 高亮当前已确认的英雄（切换模式下）
 	if confirmedHeroID and heroCards[confirmedHeroID] then
@@ -518,21 +677,22 @@ function UI_HeroSelect.Show(heroSelectTime)
 		end)
 	end)
 
-	-- 入场动画
+	-- 入场动画 (简化版适配 Grid)
 	for _, heroKey in ipairs(HERO_ORDER) do
 		local data = heroCards[heroKey]
 		if data then
-			data.card.Position = data.card.Position + UDim2.new(0, 0, 0, 40)
 			data.card.BackgroundTransparency = 1
 		end
 	end
 	for i, heroKey in ipairs(HERO_ORDER) do
 		local data = heroCards[heroKey]
 		if data then
-			task.delay(i * 0.08, function()
-				TweenService:Create(data.card, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-					BackgroundTransparency = 0.1,
-				}):Play()
+			task.delay(i * 0.05, function()
+				if data.card and data.card.Parent then
+					TweenService:Create(data.card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+						BackgroundTransparency = 0.1,
+					}):Play()
+				end
 			end)
 		end
 	end

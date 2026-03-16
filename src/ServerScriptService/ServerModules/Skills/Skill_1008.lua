@@ -1,60 +1,43 @@
--- 安琪拉 R: 炽热光辉
--- 持续火焰激光，跟随鼠标缓慢转向（参考维克兹大招）
-
+-- ==========================================
+-- Skill_1008: AngelaR (炽热光辉)
+-- Archetype: BeamSkill (Mode=Channel, TrackMouse=true)
+-- 效果: 3024(Damage 200/tick)
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
-local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local BeamSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("BeamSkill"))
 
-local AngelaR = setmetatable({}, BaseSkill)
+local AngelaR = setmetatable({}, BeamSkill)
 AngelaR.__index = AngelaR
 
 function AngelaR.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), AngelaR)
+	return setmetatable(BeamSkill.new(skillID), AngelaR)
 end
 
+-- ===== VFX 状态 =====
+-- 存储在每次 OnCast 调用的 upvalue 中
+
+-- ===== 重写 OnCast: 添加光束VFX, 然后让父类处理伤害逻辑 =====
 function AngelaR:OnCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local rootPart = character.HumanoidRootPart
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local totalDamage = (self.Config.BaseDamage or 200) * powerScale
-	local maxRange = self.Config.BaseRange or 60
-	local duration = self.Config.Duration or 3
-	local tickCount = self.Config.TickCount or 10
-	local beamWidth = self.Config.BeamWidth or 8
-	local turnSpeed = self.Config.TurnSpeed or 1.5
-	local damagePerTick = totalDamage / tickCount
-	local halfWidth = beamWidth / 2
+	local config = self:GetBeamConfig()
+	local beamWidth = config.Width
+	local maxRange = config.Range
+	local duration = config.Duration
 
-	local humanoidSelf = character:FindFirstChild("Humanoid")
-	local originalSpeed = humanoidSelf and humanoidSelf.WalkSpeed or 16
-	if humanoidSelf then humanoidSelf.WalkSpeed = 0 end
-
+	-- 初始方向
 	local currentAngle = math.atan2(targetPos.X - rootPart.Position.X, targetPos.Z - rootPart.Position.Z)
-	local targetAngle = currentAngle
-
-	-- 监听客户端鼠标方向
-	local dirEvent = ReplicatedStorage:FindFirstChild("SkillDirectionEvent")
-	local dirConn
-	if dirEvent then
-		dirConn = dirEvent.OnServerEvent:Connect(function(sender, newTargetPos)
-			if sender ~= player then return end
-			if typeof(newTargetPos) ~= "Vector3" then return end
-			targetAngle = math.atan2(newTargetPos.X - rootPart.Position.X, newTargetPos.Z - rootPart.Position.Z)
-		end)
-	end
-
-	-- === 创建持续光束 ===
 	local direction = Vector3.new(math.sin(currentAngle), 0, math.cos(currentAngle))
 	local beamStart = rootPart.Position + direction * 3
 
+	-- === 创建持续光束 VFX ===
 	local beam = Instance.new("Part")
 	beam.Size = Vector3.new(beamWidth, beamWidth, maxRange)
 	beam.Material = Enum.Material.Neon
@@ -115,18 +98,28 @@ function AngelaR:OnCast(player, targetPos)
 	})
 	glowPulse:Play()
 
-	-- === Heartbeat 实时更新 ===
-	local startTime = os.clock()
-	local lastDamageTick = 0
-	local damageInterval = duration / tickCount
+	-- VFX 跟随光束角度 (用 Heartbeat 更新)
+	local vfxStartTime = os.clock()
+	local vfxAngle = currentAngle
 
-	local heartbeatConn
-	heartbeatConn = RunService.Heartbeat:Connect(function(dt)
-		local elapsed = os.clock() - startTime
+	-- 监听方向事件来同步VFX角度
+	local dirEvent = ReplicatedStorage:FindFirstChild("SkillDirectionEvent")
+	local vfxDirConn
+	if dirEvent then
+		vfxDirConn = dirEvent.OnServerEvent:Connect(function(sender, newTargetPos)
+			if sender ~= player then return end
+			if typeof(newTargetPos) ~= "Vector3" then return end
+			vfxAngle = math.atan2(newTargetPos.X - rootPart.Position.X, newTargetPos.Z - rootPart.Position.Z)
+		end)
+	end
 
-		if elapsed >= duration or not character or not character.Parent or not rootPart or not rootPart.Parent then
-			heartbeatConn:Disconnect()
-			if dirConn then dirConn:Disconnect() end
+	local vfxConn
+	vfxConn = RunService.Heartbeat:Connect(function(dt)
+		local elapsed = os.clock() - vfxStartTime
+		if elapsed >= duration or not rootPart or not rootPart.Parent then
+			-- 清理 VFX
+			vfxConn:Disconnect()
+			if vfxDirConn then vfxDirConn:Disconnect() end
 
 			fireParticles.Enabled = false
 			pulseTween:Cancel()
@@ -138,21 +131,18 @@ function AngelaR:OnCast(player, targetPos)
 			Debris:AddItem(beam, 0.3)
 			Debris:AddItem(glow, 0.3)
 			Debris:AddItem(originPart, 0.5)
-
-			if humanoidSelf and humanoidSelf.Parent then
-				humanoidSelf.WalkSpeed = originalSpeed
-			end
 			return
 		end
 
-		-- 缓慢转向
-		local angleDiff = targetAngle - currentAngle
+		-- 缓慢转向 (与 BeamSkill 同步)
+		local turnSpeed = config.TurnSpeed or 1.5
+		local angleDiff = vfxAngle - currentAngle
 		angleDiff = math.atan2(math.sin(angleDiff), math.cos(angleDiff))
 		local maxTurn = turnSpeed * dt
 		if math.abs(angleDiff) > maxTurn then
 			currentAngle = currentAngle + maxTurn * (angleDiff > 0 and 1 or -1)
 		else
-			currentAngle = targetAngle
+			currentAngle = vfxAngle
 		end
 
 		direction = Vector3.new(math.sin(currentAngle), 0, math.cos(currentAngle))
@@ -162,32 +152,10 @@ function AngelaR:OnCast(player, targetPos)
 		beam.CFrame = beamCF
 		glow.CFrame = beamCF
 		originPart.CFrame = CFrame.new(beamStart, beamStart + direction)
-		rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + direction)
-
-		-- 定时伤害
-		if elapsed - lastDamageTick >= damageInterval then
-			lastDamageTick = elapsed
-
-			-- PvP: 使用 CombatUtils 获取范围内敌方，再做光束路径检测
-			local enemies = CombatUtils.getEnemiesInRange(player, beamStart, maxRange, character)
-			for _, model in ipairs(enemies) do
-				local humanoid = model:FindFirstChild("Humanoid")
-				local tRoot = model:FindFirstChild("HumanoidRootPart")
-				if humanoid and tRoot then
-					local toTarget = tRoot.Position - beamStart
-					local projected = toTarget:Dot(direction)
-					if projected >= 0 and projected <= maxRange then
-						local closestPoint = beamStart + direction * projected
-						local perpDist = (tRoot.Position - closestPoint).Magnitude
-						if perpDist <= halfWidth + 3 then
-							model:SetAttribute("LastDamagePlayer", player.Name)
-							humanoid:TakeDamage(damagePerTick)
-						end
-					end
-				end
-			end
-		end
 	end)
+
+	-- 调用父类处理伤害逻辑 (Channel模式)
+	BeamSkill.OnCast(self, player, targetPos)
 end
 
 return AngelaR

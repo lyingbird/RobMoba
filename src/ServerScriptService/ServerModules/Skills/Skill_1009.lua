@@ -1,20 +1,27 @@
--- 后羿 Q: 多重箭矢
--- 5把剑特效围绕自身，自动追踪范围内敌人
-
+-- ==========================================
+-- Skill_1009: HouYiQ (多重箭矢)
+-- Archetype: InstantSkill
+-- 效果: 3040(StatMod +2 AttackCount)
+-- 特殊: OnInstantCast 创建5把环绕浮剑自动追踪
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local InstantSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("InstantSkill"))
 local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
+local BuffSystem = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BuffSystem"))
 
-local HouYiQ = setmetatable({}, BaseSkill)
+local HouYiQ = setmetatable({}, InstantSkill)
 HouYiQ.__index = HouYiQ
 
 function HouYiQ.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), HouYiQ)
+	return setmetatable(InstantSkill.new(skillID), HouYiQ)
 end
+
+-- ===== VFX: 创建浮剑 =====
 
 local function createSword()
 	local sword = Instance.new("Part")
@@ -34,17 +41,17 @@ local function createSword()
 	return sword
 end
 
-function HouYiQ:OnCast(player, targetPos)
+-- ===== 重写 OnInstantCast: 创建环绕浮剑 + 自动追踪 =====
+function HouYiQ:OnInstantCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local rootPart = character.HumanoidRootPart
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local finalDamage = (self.Config.BaseDamage or 150) * powerScale
 	local swordCount = self.Config.SwordCount or 5
 	local duration = self.Config.Duration or 6
 	local detectRadius = self.Config.DetectRadius or 20
+	-- 浮剑伤害通过 SkillHelper → BuffSystem 管线
+	-- SelfEffects (3040 = +2 AttackCount) 已在父类 OnCast 中施加
 
 	-- 创建剑
 	local swords = {}
@@ -54,7 +61,7 @@ function HouYiQ:OnCast(player, targetPos)
 	end
 
 	local orbitRadius = 4
-	local orbitSpeed = 2 -- 弧度/秒
+	local orbitSpeed = 2
 	local startTime = os.clock()
 	local swordCooldowns = {}
 
@@ -80,7 +87,6 @@ function HouYiQ:OnCast(player, targetPos)
 		local center = rootPart.Position
 
 		-- 检测范围内敌人
-		-- PvP: 使用 CombatUtils 查找最近敌方
 		local nearestEnemy = CombatUtils.getNearestEnemy(player, center, detectRadius, character)
 
 		for i, s in ipairs(swords) do
@@ -96,10 +102,11 @@ function HouYiQ:OnCast(player, targetPos)
 
 					-- 检测命中
 					if (s.part.Position - enemyRoot.Position).Magnitude < 3 then
-						local humanoid = nearestEnemy:FindFirstChild("Humanoid")
-						if humanoid then
-							nearestEnemy:SetAttribute("LastDamagePlayer", player.Name)
-							humanoid:TakeDamage(finalDamage)
+						nearestEnemy:SetAttribute("LastDamagePlayer", player.Name)
+						-- 浮剑命中: 施加 SwordEffects (3045 = Damage 150)
+						local swordEffects = self.Config.SwordEffects or {}
+						if #swordEffects > 0 then
+							SkillHelper.ApplyEffects(self, character, nearestEnemy, swordEffects)
 						end
 						swordCooldowns[i] = os.clock()
 					end

@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("UITheme"))
 local CooldownManager = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("CooldownManager"))
+local EnergyConfig = require(ReplicatedStorage:WaitForChild("EnergyConfig"))
 
 UI_HUD.SkillsContainer = nil
 UI_HUD.SkillIcons = {}
@@ -22,6 +23,7 @@ UI_HUD.HpFill = nil
 UI_HUD.HpText = nil
 UI_HUD.MpFill = nil
 UI_HUD.MpText = nil
+UI_HUD.MpBarBg = nil -- REQ-007: 能量条背景引用
 UI_HUD.StatLabels = {}
 UI_HUD.LevelText = nil
 UI_HUD.XpFill = nil
@@ -197,6 +199,7 @@ function UI_HUD.Init()
 	mpBarBg.BorderSizePixel = 0
 	mpBarBg.Parent = leftPanel
 	Theme.corner(mpBarBg, 4)
+	UI_HUD.MpBarBg = mpBarBg
 
 	UI_HUD.MpFill = Instance.new("Frame")
 	UI_HUD.MpFill.Name = "MpFill"
@@ -600,6 +603,55 @@ function UI_HUD.Init()
 	end
 
 	StartGlobalCDMonitor()
+
+	-- ==========================
+	-- REQ-007: Energy Bar Sync
+	-- ==========================
+	task.spawn(function()
+		local syncEnergyEvent = ReplicatedStorage:WaitForChild("SyncEnergyEvent", 10)
+		if not syncEnergyEvent then return end
+
+		syncEnergyEvent.OnClientEvent:Connect(function(data)
+			if not data then return end
+
+			local energyType = data.energyType or "None"
+			local current = data.current or 0
+			local max = data.max or 0
+
+			-- None 类型: 隐藏能量条
+			if energyType == "None" or max <= 0 then
+				if UI_HUD.MpBarBg then
+					UI_HUD.MpBarBg.Visible = false
+				end
+				return
+			end
+
+			-- 显示能量条
+			if UI_HUD.MpBarBg then
+				UI_HUD.MpBarBg.Visible = true
+			end
+
+			-- 动态颜色 (从 EnergyConfig 读取)
+			local config = EnergyConfig[energyType]
+			if config then
+				if config.BarColor and UI_HUD.MpFill then
+					UI_HUD.MpFill.BackgroundColor3 = config.BarColor
+				end
+				if config.BarBgColor and UI_HUD.MpBarBg then
+					UI_HUD.MpBarBg.BackgroundColor3 = config.BarBgColor
+				end
+			end
+
+			-- 更新填充比例和文字
+			if UI_HUD.MpFill then
+				local ratio = (max > 0) and math.clamp(current / max, 0, 1) or 0
+				UI_HUD.MpFill.Size = UDim2.new(ratio, 0, 1, 0)
+			end
+			if UI_HUD.MpText then
+				UI_HUD.MpText.Text = current .. " / " .. max
+			end
+		end)
+	end)
 
 	-- ==========================
 	-- PvP: Kill Score Display (top center)

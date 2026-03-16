@@ -15,7 +15,12 @@ local HeroSwapEvent = ReplicatedStorage:WaitForChild("HeroSwapEvent", 10)
 local DuelEvent = ReplicatedStorage:WaitForChild("DuelEvent", 10)
 
 -- 英雄配置
-local HeroConfig = require(ReplicatedStorage:WaitForChild("HeroConfig"))
+local HeroRegistry = require(ReplicatedStorage:WaitForChild("HeroRegistry"))
+
+-- 被动 + 能量系统 (REQ-007)
+local ServerScriptService = game:GetService("ServerScriptService")
+local PassiveSystem = require(ServerScriptService.ServerModules:WaitForChild("PassiveSystem"))
+local EnergySystem = require(ServerScriptService.ServerModules:WaitForChild("EnergySystem"))
 
 -- ========== 数据结构 ==========
 local playerStates = {}  -- { [Player] = "LOBBY" | "MATCHING" | "DUELING" }
@@ -145,7 +150,7 @@ local function onHeroSwap(player, data)
 	end
 
 	-- 验证 heroId 合法
-	if not HeroConfig[data.heroId] then
+	if not HeroRegistry[data.heroId] then
 		HeroSwapEvent:FireClient(player, {
 			success = false,
 			heroId = data.heroId,
@@ -155,6 +160,11 @@ local function onHeroSwap(player, data)
 	end
 
 	playerHeroes[player] = data.heroId
+
+	-- REQ-007: 被动 + 能量系统注册
+	PassiveSystem:UnregisterPassives(player)
+	PassiveSystem:RegisterPassives(player, data.heroId)
+	EnergySystem:InitEnergy(player, data.heroId)
 
 	HeroSwapEvent:FireClient(player, {
 		success = true,
@@ -201,6 +211,10 @@ local function onPlayerRemoving(player)
 	if playerStates[player] == "DUELING" and shared.DuelManager then
 		shared.DuelManager.OnPlayerDisconnect(player)
 	end
+
+	-- REQ-007: 清理被动 + 能量
+	PassiveSystem:UnregisterPassives(player)
+	EnergySystem:RemovePlayer(player)
 
 	playerStates[player] = nil
 	playerHeroes[player] = nil

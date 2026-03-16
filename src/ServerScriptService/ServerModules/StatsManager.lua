@@ -288,4 +288,36 @@ function StatsManager.SetStat(character, statName, value)
 	end
 end
 
+-- REQ-009: 训练场等级调整 + 属性重算
+function StatsManager.SetLevel(player, level)
+	local character = player.Character
+	if not character then return end
+
+	local clampedLevel = math.clamp(level, 1, LevelConfig.MaxLevel or 18)
+	character:SetAttribute("Level", clampedLevel)
+	player:SetAttribute("Level", clampedLevel)
+	recalculateStats(character)
+
+	-- HP/MP 回满
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Health = humanoid.MaxHealth
+		character:SetAttribute("HP", math.floor(humanoid.MaxHealth))
+	end
+	character:SetAttribute("MP", character:GetAttribute("MaxMP") or 500)
+
+	-- 同步等级到客户端
+	local SyncLevelEvent = ReplicatedStorage:FindFirstChild("SyncLevelEvent")
+	if SyncLevelEvent then
+		SyncLevelEvent:FireClient(player, clampedLevel, player:GetAttribute("TotalXP") or 0)
+	end
+end
+
+function StatsManager.RecalculateStats(player)
+	local character = player.Character
+	if character then
+		recalculateStats(character)
+	end
+end
+
 return StatsManager

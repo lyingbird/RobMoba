@@ -1,20 +1,26 @@
--- 拉克丝 W: 曲光屏障 (Prismatic Barrier)
--- 向前投出光之权杖，经过的友方获得护盾，返回时再次叠加
-
+-- ==========================================
+-- Skill_1003: LuxW (曲光屏障)
+-- Archetype: ProjectileSkill (特殊: 对友方施加护盾, 返回)
+-- 效果: 3003(Shield 150, 3s)
+-- 注: 完全重写 OnCast — 去程/回程对友方施加效果
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local ProjectileSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("ProjectileSkill"))
 local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
 
-local LuxW = setmetatable({}, BaseSkill)
+local LuxW = setmetatable({}, ProjectileSkill)
 LuxW.__index = LuxW
 
 function LuxW.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), LuxW)
+	return setmetatable(ProjectileSkill.new(skillID), LuxW)
 end
+
+-- ===== VFX =====
 
 local function createShieldVFX(character, duration)
 	local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -34,7 +40,7 @@ local function createShieldVFX(character, duration)
 
 	-- 跟随目标
 	local followConn
-	followConn = game:GetService("RunService").Heartbeat:Connect(function()
+	followConn = RunService.Heartbeat:Connect(function()
 		if rootPart and rootPart.Parent then
 			shield.CFrame = CFrame.new(rootPart.Position)
 		else
@@ -75,63 +81,30 @@ local function createShieldVFX(character, duration)
 	end)
 end
 
-local function applyShield(humanoid, amount, duration)
-	-- 用 ForceField 模拟护盾效果
-	local existingFF = humanoid.Parent:FindFirstChildOfClass("ForceField")
-	if existingFF then existingFF:Destroy() end
-
-	local ff = Instance.new("ForceField")
-	ff.Visible = false
-	ff.Parent = humanoid.Parent
-	Debris:AddItem(ff, duration)
-
-	-- 存储护盾值到 attribute
-	local character = humanoid.Parent
-	local currentShield = character:GetAttribute("Shield") or 0
-	character:SetAttribute("Shield", currentShield + amount)
-
-	task.delay(duration, function()
-		if character and character.Parent then
-			local s = character:GetAttribute("Shield") or 0
-			character:SetAttribute("Shield", math.max(0, s - amount))
-		end
-	end)
-end
-
+-- ===== 完全重写 OnCast: 去程/回程对友方施加护盾 =====
 function LuxW:OnCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local rootPart = character.HumanoidRootPart
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	-- MultiShot: 增加护盾量
-	local extraShots = self:GetRuneStat("MultiShot")
-	local multiScale = 1 + extraShots * 0.3
-	local shieldAmount = (self.Config.ShieldAmount or 150) * powerScale * multiScale
-	local maxRange = self.Config.BaseRange or 45
+	local maxRange = self.Config.Range or 45
 	local speed = self.Config.Speed or 50
-	local shieldDuration = 3
+	local shieldDuration = 3 -- 与 EffectConfig[3003].Duration 一致
+	local selfEffects = self.Config.SelfEffects or {}
+	local onHitEffects = self.Config.OnHitEffects or {}
 
 	local startPos = rootPart.Position
 	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
 
-	-- 先给自己一层护盾
-	local selfHumanoid = character:FindFirstChild("Humanoid")
-	if selfHumanoid then
-		applyShield(selfHumanoid, shieldAmount, shieldDuration)
+	-- 先给自己护盾 (通过 BuffSystem)
+	if #selfEffects > 0 then
+		SkillHelper.ApplyEffects(self, character, character, selfEffects)
 		createShieldVFX(character, shieldDuration)
 	end
 
-	-- 飞行光杖
-	local wand = Instance.new("Part")
-	wand.Size = Vector3.new(0.5, 0.5, 3)
-	wand.Material = Enum.Material.Neon
-	wand.Color = Color3.fromRGB(180, 230, 255)
-	wand.CFrame = CFrame.new(startPos + direction * 3, startPos + direction * 4)
-	wand.CanCollide = false
-	wand.Anchored = false
-	wand.Parent = workspace
+	-- 飞行光杖 (复用 _createBullet 框架)
+	local config = self:GetProjectileConfig()
+	local wand = self:_createBullet(config, startPos, direction)
 
 	-- 尾迹
 	local a0 = Instance.new("Attachment")
@@ -160,33 +133,24 @@ function LuxW:OnCast(player, targetPos)
 	light.Range = 10
 	light.Parent = wand
 
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = wand
-
-	local lv = Instance.new("LinearVelocity")
-	lv.Attachment0 = attachment
-	lv.VectorVelocity = direction * speed
-	lv.MaxForce = math.huge
-	lv.RelativeTo = Enum.ActuatorRelativeTo.World
-	lv.Parent = wand
-
 	local shieldedOnOutward = {}
 
-	-- 去程检测友方
+	-- 去程: 对友方施加护盾 (通过 BuffSystem)
 	wand.Touched:Connect(function(hit)
 		if hit:IsDescendantOf(character) then return end
 		local targetModel = hit.Parent
 		local humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
-
 		if humanoid then
-			-- PvP: 只给同队友方加盾
 			if CombatUtils.isAlly(player, targetModel) and not shieldedOnOutward[targetModel] then
 				shieldedOnOutward[targetModel] = true
-				applyShield(humanoid, shieldAmount, shieldDuration)
+				SkillHelper.ApplyEffects(self, character, targetModel, onHitEffects)
 				createShieldVFX(targetModel, shieldDuration)
 			end
 		end
 	end)
+
+	-- 查找 LinearVelocity
+	local lv = wand:FindFirstChildOfClass("LinearVelocity")
 
 	-- 到达最大距离后返回
 	task.spawn(function()
@@ -207,10 +171,10 @@ function LuxW:OnCast(player, targetPos)
 			local targetModel = hit.Parent
 			local humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
 			if humanoid then
-				-- PvP: 只给同队友方加盾
 				if CombatUtils.isAlly(player, targetModel) and not shieldedOnReturn[targetModel] then
 					shieldedOnReturn[targetModel] = true
-					applyShield(humanoid, shieldAmount, shieldDuration)
+					SkillHelper.ApplyEffects(self, character, targetModel, onHitEffects)
+					createShieldVFX(targetModel, shieldDuration)
 				end
 			end
 		end)
@@ -222,7 +186,9 @@ function LuxW:OnCast(player, targetPos)
 				wand:Destroy()
 				break
 			end
-			lv.VectorVelocity = returnDir.Unit * speed
+			if lv then
+				lv.VectorVelocity = returnDir.Unit * speed
+			end
 			task.wait(0.05)
 		end
 

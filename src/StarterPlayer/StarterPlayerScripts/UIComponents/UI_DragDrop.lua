@@ -2,7 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local EquipSkillEvent = ReplicatedStorage:WaitForChild("EquipSkillEvent", 10)
 local SyncRuneEvent = ReplicatedStorage:WaitForChild("SyncRuneEvent", 10)
-local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 local RuneConfig = require(ReplicatedStorage:WaitForChild("RuneConfig"))
 local ItemConfig = require(ReplicatedStorage:WaitForChild("ItemConfig"))
 
@@ -39,9 +39,9 @@ local STAT_DISPLAY_NAMES = {
 local function getItemTooltipInfo(itemID)
 	if not itemID then return nil end
 
-	-- Skill (1000-1999)
-	if itemID >= 1000 and itemID < 2000 then
-		local cfg = SkillConfig[itemID]
+	-- Skill: check SkillRegistry (supports both legacy 1xxx and HoK 10xxx+ IDs)
+	if SkillRegistry[itemID] then
+		local cfg = SkillRegistry[itemID]
 		if not cfg then return nil end
 		local lines = {}
 		table.insert(lines, {text = cfg.UIName or cfg.Name, color = Color3.fromRGB(255, 220, 80), size = 14, bold = true})
@@ -51,8 +51,8 @@ local function getItemTooltipInfo(itemID)
 		if cfg.ShieldAmount and cfg.ShieldAmount > 0 then
 			table.insert(lines, {text = "Shield: " .. cfg.ShieldAmount, color = Color3.fromRGB(100, 200, 255)})
 		end
-		table.insert(lines, {text = "CD: " .. (cfg.BaseCD or 0) .. "s", color = Color3.fromRGB(150, 200, 255)})
-		table.insert(lines, {text = "Range: " .. (cfg.BaseRange or 0), color = Color3.fromRGB(180, 180, 180)})
+		table.insert(lines, {text = "CD: " .. (cfg.CD or cfg.BaseCD or 0) .. "s", color = Color3.fromRGB(150, 200, 255)})
+		table.insert(lines, {text = "Range: " .. (cfg.Range or cfg.BaseRange or 0), color = Color3.fromRGB(180, 180, 180)})
 		if cfg.AreaRadius then
 			table.insert(lines, {text = "Area: " .. cfg.AreaRadius, color = Color3.fromRGB(180, 180, 180)})
 		end
@@ -203,7 +203,7 @@ local function OpenDetailWindow(itemID, iconURL)
 	currentDetailSkillID = itemID
 	if not localSocketedRunes[itemID] then localSocketedRunes[itemID] = {} end
 
-	local configData = SkillConfig[itemID]
+	local configData = SkillRegistry[itemID]
 	if configData then
 		HUD.DetailName.Text = configData.UIName or configData.Name or "Unknown"
 		HUD.DetailDesc.Text = "Base Damage: " .. (configData.BaseDamage or 0) .. "\nCooldown: " .. (configData.BaseCD or 0) .. "s"
@@ -290,7 +290,7 @@ function UI_DragDrop.CreateItemCard(parentSlot, itemID, iconURL, isSilent)
 			-- Double-click opens detail window
 			local now = os.clock()
 			if now - lastClickTime < 0.3 then
-				if itemID >= 1000 and itemID < 2000 then
+				if SkillRegistry[itemID] then
 					CleanupDrag()
 					OpenDetailWindow(itemID, iconURL)
 					return
@@ -381,8 +381,8 @@ function UI_DragDrop.Init(hudModule, backpackModule, uiManager)
 						if Manager then Manager.ShowWarning("Runes only!") end
 					end
 				elseif slotName:match("ActionSlot_") then
-					-- Skill slots: only accept skills (1000-1999)
-					if itemID >= 1000 and itemID < 2000 then
+					-- Skill slots: only accept skills (registered in SkillRegistry)
+					if SkillRegistry[itemID] then
 						if IsSkillOnCooldown(slotName) then
 							if Manager then Manager.ShowWarning("Slot on cooldown!") end
 						else
@@ -436,26 +436,23 @@ function UI_DragDrop.Init(hudModule, backpackModule, uiManager)
 	local inv20 = Backpack.InventoryContainer:WaitForChild("InvSlot_20")
 	local inv21 = Backpack.InventoryContainer:WaitForChild("InvSlot_21")
 
-	UI_DragDrop.CreateItemCard(inv1, 1001, SkillConfig[1001].Icon, true)
-	UI_DragDrop.CreateItemCard(inv2, 1002, SkillConfig[1002].Icon, true)
-	UI_DragDrop.CreateItemCard(inv3, 1003, SkillConfig[1003].Icon, true)
-	UI_DragDrop.CreateItemCard(inv4, 1004, SkillConfig[1004].Icon, true)
-	UI_DragDrop.CreateItemCard(inv5, 1005, SkillConfig[1005].Icon, true)
+	UI_DragDrop.CreateItemCard(inv1, 1001, SkillRegistry[1001].Icon, true)
+	UI_DragDrop.CreateItemCard(inv2, 1002, SkillRegistry[1002].Icon, true)
+	UI_DragDrop.CreateItemCard(inv3, 1003, SkillRegistry[1003].Icon, true)
+	UI_DragDrop.CreateItemCard(inv4, 1004, SkillRegistry[1004].Icon, true)
+	UI_DragDrop.CreateItemCard(inv5, 1005, SkillRegistry[1005].Icon, true)
 	-- 安琪拉技能
-	UI_DragDrop.CreateItemCard(inv6, 1006, SkillConfig[1006].Icon, true)
-	UI_DragDrop.CreateItemCard(inv7, 1007, SkillConfig[1007].Icon, true)
-	UI_DragDrop.CreateItemCard(inv8, 1008, SkillConfig[1008].Icon, true)
+	UI_DragDrop.CreateItemCard(inv6, 1006, SkillRegistry[1006].Icon, true)
+	UI_DragDrop.CreateItemCard(inv7, 1007, SkillRegistry[1007].Icon, true)
+	UI_DragDrop.CreateItemCard(inv8, 1008, SkillRegistry[1008].Icon, true)
 	-- 后羿技能
-	UI_DragDrop.CreateItemCard(inv9, 1009, SkillConfig[1009].Icon, true)
-	UI_DragDrop.CreateItemCard(inv10, 1010, SkillConfig[1010].Icon, true)
-	UI_DragDrop.CreateItemCard(inv11, 1011, SkillConfig[1011].Icon, true)
+	UI_DragDrop.CreateItemCard(inv9, 1009, SkillRegistry[1009].Icon, true)
+	UI_DragDrop.CreateItemCard(inv10, 1010, SkillRegistry[1010].Icon, true)
+	UI_DragDrop.CreateItemCard(inv11, 1011, SkillRegistry[1011].Icon, true)
 	-- 廉颇技能
-	UI_DragDrop.CreateItemCard(inv12, 1012, SkillConfig[1012].Icon, true)
-	UI_DragDrop.CreateItemCard(inv13, 1013, SkillConfig[1013].Icon, true)
-	UI_DragDrop.CreateItemCard(inv14, 1014, SkillConfig[1014].Icon, true)
-	-- 廉颇终极特写
-	local inv22 = Backpack.InventoryContainer:WaitForChild("InvSlot_22")
-	UI_DragDrop.CreateItemCard(inv22, 1015, SkillConfig[1015].Icon, true)
+	UI_DragDrop.CreateItemCard(inv12, 10510, SkillRegistry[10510].Icon, true)
+	UI_DragDrop.CreateItemCard(inv13, 10520, SkillRegistry[10520].Icon, true)
+	UI_DragDrop.CreateItemCard(inv14, 10530, SkillRegistry[10530].Icon, true)
 	-- 符文
 	UI_DragDrop.CreateItemCard(inv15, 2001, "rbxthumb://type=Asset&id=1081577782&w=150&h=150", true)
 	UI_DragDrop.CreateItemCard(inv16, 2002, "rbxthumb://type=Asset&id=1081577782&w=150&h=150", true)

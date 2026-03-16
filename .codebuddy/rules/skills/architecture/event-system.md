@@ -2,57 +2,53 @@
 # 注意不要修改本文头文件，如修改，CodeBuddy（内网版）将按照默认逻辑设置
 type: manual
 ---
-# 技能：事件系统设计模式
+# 技能：Roblox 事件与通信模式
 
 > **领域**: architecture
 > **适用Agent**: 主程 / 程序
-> **加载时机**: 需要设计或实现模块间通信、解耦逻辑时按需加载
-> **大小**: ~1.5KB
+> **加载时机**: 需要设计或实现模块间通信、客户端-服务端交互时按需加载
+> **大小**: ~2KB
 
 ## 📌 核心知识
 
-1. **事件系统核心目的**：解耦发送者和接收者，模块间通过事件通信而非直接引用
-2. **C# 原生事件**：`event Action<T>` / `event EventHandler<TArgs>` — 适合类内部通知
-3. **全局事件总线**：EventBus/MessageCenter 模式 — 适合跨模块通信
-4. **Unity 事件**：`UnityEvent<T>` — 适合 Inspector 中配置的回调
-5. **ScriptableObject 事件**：SO 作为事件通道 — 适合松耦合的跨场景通信
-6. **观察者模式 vs 事件总线**：观察者是 1:N 直接订阅；事件总线是 N:N 通过中介
-7. **事件生命周期**：订阅 → 触发 → 取消订阅，三者必须完整闭环
+1. **RemoteEvent**: 服务端 ↔ 客户端单向通信 — `FireClient` / `FireServer` / `FireAllClients`
+2. **RemoteFunction**: 服务端 ↔ 客户端请求-响应 — `InvokeServer` / `InvokeClient`（谨慎使用 InvokeClient，客户端不可信）
+3. **BindableEvent**: 同侧模块间通信（服务端-服务端 或 客户端-客户端） — `:Fire()` / `:Connect()`
+4. **RBXScriptSignal**: Roblox 内置信号 — `Humanoid.Died`, `Players.PlayerAdded`, `RunService.Heartbeat` 等
+5. **Signal 模式**: 自定义 Lua 信号实现 — 适合 ModuleScript 之间的松耦合通信
+6. **本项目通信架构**: 16 个 RemoteEvent (RemoteEventInit 集中创建) + 直接 require() 模块调用
+7. **事件生命周期**: `:Connect()` → 使用 → 断开连接（保存 connection 引用调用 `:Disconnect()`）
 
 ## ✅ 最佳实践
 
-1. **选择合适的事件方案**：
-   - 类内部通知 → `event Action<T>`
-   - Inspector 可配置回调 → `UnityEvent<T>`
-   - 跨模块通信 → 全局 EventBus
-   - 跨场景/松耦合 → ScriptableObject 事件通道
-2. **事件参数使用值类型或不可变类型**：避免接收方修改事件数据影响其他订阅者
-3. **订阅/取消成对**：`OnEnable` 订阅 → `OnDisable`/`OnDestroy` 取消
-4. **避免事件风暴**：高频触发的事件（如每帧位置变化）考虑节流（throttle）或批量处理
-5. **事件命名规范**：`On{动作}{过去分词}` 如 `OnPlayerDied`、`OnItemCollected`
-6. **弱引用考虑**：长生命周期的事件总线对短生命周期订阅者，考虑弱引用防止泄漏
-7. **事件执行顺序**：不要依赖多个订阅者的执行顺序
+1. **RemoteEvent 集中注册**: 所有 RemoteEvent 在 `RemoteEventInit.server.lua` 中统一创建，客户端通过 `WaitForChild` 获取
+2. **数据最小化原则**: RemoteEvent 只传必要数据（ID/坐标/枚举），不传整个 table 或实例引用
+3. **服务端权威**: 所有游戏逻辑判断在服务端，客户端只发送意图（如技能方向、目标选择），服务端验证后执行
+4. **连接管理**: 保存 `:Connect()` 返回的 `RBXScriptConnection`，在不需要时 `:Disconnect()` 防止泄漏
+5. **ModuleScript 直接调用**: 同侧简单通信优先使用 `require()` 直接调用方法，避免过度使用事件
+6. **事件命名规范**: `{功能}{动作}Event` 如 `CastSkillEvent`、`SyncCooldownEvent`、`DuelEvent`
+7. **防刷验证**: 服务端 `OnServerEvent` 必须验证发送者身份和请求合法性（冷却/状态/权限）
 
 ## ❌ 常见陷阱
 
-1. **忘记取消订阅导致内存泄漏** → 正确做法：OnDestroy 中逐一取消所有订阅
-2. **事件回调中修改集合导致异常** → 正确做法：使用副本遍历或延迟修改
-3. **事件循环触发（A→B→A）** → 正确做法：设计单向事件流，或加入循环检测
-4. **在事件回调中执行耗时操作** → 正确做法：回调中只更新状态，耗时操作异步执行
-5. **事件参数使用可变引用类型** → 正确做法：使用 struct 或 readonly class
-6. **过度使用全局事件导致调试困难** → 正确做法：能直接引用的优先直接引用，跨模块才用事件
+1. **RemoteEvent 不验证客户端数据** → 正确做法：服务端 handler 第一参数是 player，必须验证所有参数合法性
+2. **忘记 Disconnect 导致内存泄漏** → 正确做法：保存 connection 引用，角色/对象销毁时断开
+3. **InvokeClient 阻塞/超时** → 正确做法：避免使用 InvokeClient，改用 RemoteEvent 双向通信
+4. **高频 RemoteEvent (每帧)** → 正确做法：合并/节流，如位置同步使用 UnreliableRemoteEvent 或降频
+5. **在 RemoteEvent 中传递 Instance 引用** → 正确做法：传 ID 或路径，接收方自行查找
+6. **:Connect() 回调中访问已销毁对象** → 正确做法：回调开头检查对象有效性
 
 ## 📋 检查清单
 
-- [ ] 每个事件订阅是否有对应的取消订阅
-- [ ] 事件参数类型是否为值类型或不可变类型
-- [ ] 是否存在事件循环触发的风险
-- [ ] 高频事件是否有节流/批量处理
-- [ ] 事件命名是否符合 `On{动作}{过去分词}` 规范
-- [ ] 全局事件总线是否有清理机制（场景切换时）
-- [ ] 事件回调中是否避免了耗时操作
+- [ ] 所有 RemoteEvent 是否在 RemoteEventInit 中统一注册
+- [ ] 客户端是否使用 `WaitForChild` 获取 RemoteEvent
+- [ ] 服务端 OnServerEvent handler 是否验证了 player 和参数
+- [ ] 所有 `:Connect()` 是否有对应的 `:Disconnect()` 时机
+- [ ] 高频事件是否有节流/合并策略
+- [ ] 是否避免了在 RemoteEvent 中传递大量数据或敏感信息
+- [ ] 事件命名是否符合 `{功能}{动作}Event` 规范
 
 ## 🔗 关联技能
 
-- [MonoBehaviour 生命周期最佳实践](../unity/monobehaviour-patterns.md)
-- [Manager 单例模式](./manager-singleton.md)
+- [Roblox Instance 与服务模式](../roblox/instance-patterns.md)
+- [Roblox Studio 测试方法](../testing/roblox-studio-testing.md)

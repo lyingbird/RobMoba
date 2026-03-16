@@ -18,8 +18,9 @@ local StatsBinding = require(Modules:WaitForChild("StatsBinding"))
 local OverheadUI = require(Modules:WaitForChild("OverheadUI"))
 local HeroAnimator = require(Modules:WaitForChild("HeroAnimator"))
 local HeroSelectUI = require(UIComponents:WaitForChild("UI_HeroSelect"))
-local HeroConfig = require(ReplicatedStorage:WaitForChild("HeroConfig"))
-local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
+local UI_TrainingPanel = require(UIComponents:WaitForChild("UI_TrainingPanel"))
+local HeroRegistry = require(ReplicatedStorage:WaitForChild("HeroRegistry"))
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 
 -- ========== RemoteEvents ==========
 task.wait(0.5) -- 等待 RemoteEventInit 创建完成
@@ -47,7 +48,7 @@ end
 
 -- ========== 技能装备 ==========
 local function equipHeroSkills(heroId)
-	local heroData = HeroConfig[heroId]
+	local heroData = HeroRegistry[heroId]
 	if not heroData or not heroData.Skills or not next(heroData.Skills) then
 		print("[Client] No skills to equip for hero:", heroId)
 		return
@@ -66,10 +67,10 @@ local function equipHeroSkills(heroId)
 			EquipSkillEvent:FireServer(key, skillID)
 		end
 
-		if skillsContainer and SkillConfig[skillID] then
+		if skillsContainer and SkillRegistry[skillID] then
 			local slot = skillsContainer:FindFirstChild("ActionSlot_" .. key)
 			if slot then
-				DragDrop.CreateItemCard(slot, skillID, SkillConfig[skillID].Icon, true)
+				DragDrop.CreateItemCard(slot, skillID, SkillRegistry[skillID].Icon, true)
 			end
 		end
 		task.wait(0.05)
@@ -80,6 +81,7 @@ end
 -- ========== 基础UI初始化 ==========
 UIManager.Init()
 OverheadUI.Init()
+UI_TrainingPanel.Init() -- REQ-009: 训练场面板
 local UI_HUD = UIManager.GetHUD()
 StatsBinding.Init(UI_HUD)
 
@@ -107,7 +109,7 @@ local function onHeroConfirmed(heroId)
 	equipHeroSkills(heroId)
 
 	-- 背包控制
-	local heroData = HeroConfig[heroId]
+	local heroData = HeroRegistry[heroId]
 	if heroData and not heroData.AllowBackpack then
 		UIManager.SetBackpackLocked(true)
 	else

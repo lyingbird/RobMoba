@@ -1,21 +1,25 @@
--- 安琪拉 Q: 火球术
--- 5颗火球从面前横排生成，汇聚向目标点
--- 近距离分散，远距离汇聚
-
+-- ==========================================
+-- Skill_1006: AngelaQ (火球术)
+-- Archetype: ProjectileSkill (特殊: 5弹散射, 重写OnCast)
+-- 效果: 3020(Damage 300/弹)
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local ProjectileSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("ProjectileSkill"))
 local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
 
-local AngelaQ = setmetatable({}, BaseSkill)
+local AngelaQ = setmetatable({}, ProjectileSkill)
 AngelaQ.__index = AngelaQ
 
 function AngelaQ.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), AngelaQ)
+	return setmetatable(ProjectileSkill.new(skillID), AngelaQ)
 end
+
+-- ===== VFX =====
 
 local function playHitVFX(position)
 	local flash = Instance.new("Part")
@@ -35,106 +39,106 @@ local function playHitVFX(position)
 	Debris:AddItem(flash, 0.4)
 end
 
--- PvP: 用 CombatUtils 检测范围内所有敌方目标
-local function checkHit(fireball, character, player, finalDamage)
-	local hitTriggered = false
+local function createFireTrail(fireball)
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, 0, -0.5)
+	a0.Parent = fireball
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, 0, 0.5)
+	a1.Parent = fireball
 
-	local conn
-	conn = RunService.Heartbeat:Connect(function()
-		if hitTriggered or not fireball or not fireball.Parent then
-			if conn then conn:Disconnect() end
-			return
-		end
-		-- 使用 CombatUtils.getEnemiesInRange 检测半径4内的敌方
-		local enemies = CombatUtils.getEnemiesInRange(player, fireball.Position, 4, character)
-		for _, enemy in ipairs(enemies) do
-			local humanoid = enemy:FindFirstChild("Humanoid")
-			if humanoid then
-				hitTriggered = true
-				enemy:SetAttribute("LastDamagePlayer", player.Name)
-				humanoid:TakeDamage(finalDamage)
-				playHitVFX(fireball.Position)
-				fireball:Destroy()
-				conn:Disconnect()
-				return
-			end
-		end
-	end)
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 150, 0), Color3.fromRGB(255, 30, 0))
+	trail.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1)})
+	trail.Lifetime = 0.3
+	trail.FaceCamera = true
+	trail.LightEmission = 1
+	trail.Parent = fireball
 
-	return function() return hitTriggered end
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 120, 0)
+	light.Brightness = 2
+	light.Range = 8
+	light.Parent = fireball
 end
 
+-- ===== 完全重写 OnCast: 5弹散射 =====
 function AngelaQ:OnCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local rootPart = character.HumanoidRootPart
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local finalDamage = (self.Config.BaseDamage or 300) * powerScale
-	local maxRange = self.Config.BaseRange or 45
-	local speed = self.Config.Speed or 55
+	local config = self:GetProjectileConfig()
+	local maxRange = self.Config.Range or 45
+	local speed = config.Speed
 	local bulletCount = self.Config.BulletCount or 5
+	local onHitEffects = config.OnHitEffects
+	local onHitCC = config.OnHitCC
 
 	local startPos = rootPart.Position
 	local flatTarget = Vector3.new(targetPos.X, startPos.Y, targetPos.Z)
 	local baseDirection = (flatTarget - startPos).Unit
 	local rightDir = baseDirection:Cross(Vector3.new(0, 1, 0)).Unit
 
-	local SPREAD_WIDTH = 8 -- 横排总宽度
-	local SPAWN_FORWARD = 3 -- 生成点前移距离
+	local SPREAD_WIDTH = self.Config.SpreadWidth or 8
+	local SPAWN_FORWARD = 3
 
 	for i = 1, bulletCount do
 		local lateralOffset = (i - (bulletCount + 1) / 2) * (SPREAD_WIDTH / (bulletCount - 1))
 		local spawnPos = startPos + baseDirection * SPAWN_FORWARD + rightDir * lateralOffset
-
-		-- 每颗火球从自己的生成点直线飞向目标点
 		local toTarget = (flatTarget - spawnPos)
 		local dir = toTarget.Unit
 
+		-- 创建火球 (Anchored=true, Heartbeat移动)
 		local fireball = Instance.new("Part")
 		fireball.Shape = Enum.PartType.Ball
-		fireball.Size = Vector3.new(1.8, 1.8, 1.8)
-		fireball.Material = Enum.Material.Neon
-		fireball.Color = Color3.fromRGB(255, 100, 0)
+		fireball.Size = config.Size
+		fireball.Material = config.Material
+		fireball.Color = config.Color
 		fireball.CFrame = CFrame.new(spawnPos, spawnPos + dir)
 		fireball.Anchored = true
 		fireball.CanCollide = false
 		fireball.Parent = workspace
 
-		-- 火焰拖尾
-		local a0 = Instance.new("Attachment")
-		a0.Position = Vector3.new(0, 0, -0.5)
-		a0.Parent = fireball
-		local a1 = Instance.new("Attachment")
-		a1.Position = Vector3.new(0, 0, 0.5)
-		a1.Parent = fireball
+		createFireTrail(fireball)
 
-		local trail = Instance.new("Trail")
-		trail.Attachment0 = a0
-		trail.Attachment1 = a1
-		trail.Color = ColorSequence.new(Color3.fromRGB(255, 150, 0), Color3.fromRGB(255, 30, 0))
-		trail.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1)})
-		trail.Lifetime = 0.3
-		trail.FaceCamera = true
-		trail.LightEmission = 1
-		trail.Parent = fireball
+		-- Heartbeat碰撞检测 + 效果施加
+		local hitTriggered = false
 
-		local light = Instance.new("PointLight")
-		light.Color = Color3.fromRGB(255, 120, 0)
-		light.Brightness = 2
-		light.Range = 8
-		light.Parent = fireball
+		local checkConn
+		checkConn = RunService.Heartbeat:Connect(function()
+			if hitTriggered or not fireball or not fireball.Parent then
+				if checkConn then checkConn:Disconnect() end
+				return
+			end
+			local enemies = CombatUtils.getEnemiesInRange(player, fireball.Position, 4, character)
+			for _, enemy in ipairs(enemies) do
+				local humanoid = enemy:FindFirstChild("Humanoid")
+				if humanoid then
+					hitTriggered = true
+					-- 效果施加 (通过 SkillHelper → BuffSystem)
+					local allEffects = {}
+					for _, id in ipairs(onHitEffects) do table.insert(allEffects, id) end
+					for _, id in ipairs(onHitCC) do table.insert(allEffects, id) end
+					SkillHelper.ApplyEffects(self, character, enemy, allEffects)
+					enemy:SetAttribute("LastDamagePlayer", player.Name)
+					playHitVFX(fireball.Position)
+					fireball:Destroy()
+					checkConn:Disconnect()
+					return
+				end
+			end
+		end)
 
-		-- 硬编碰撞检测 + Heartbeat移动
-		local isHit = checkHit(fireball, character, player, finalDamage)
-
+		-- Heartbeat 移动
 		task.spawn(function()
 			local currentPos = spawnPos
-			local conn
-			conn = RunService.Heartbeat:Connect(function(dt)
-				if isHit() or not fireball or not fireball.Parent then
-					if conn then conn:Disconnect() end
+			local moveConn
+			moveConn = RunService.Heartbeat:Connect(function(dt)
+				if hitTriggered or not fireball or not fireball.Parent then
+					if moveConn then moveConn:Disconnect() end
 					return
 				end
 
@@ -142,8 +146,8 @@ function AngelaQ:OnCast(player, targetPos)
 				fireball.CFrame = CFrame.new(currentPos, currentPos + dir)
 
 				if (currentPos - startPos).Magnitude >= maxRange then
-					conn:Disconnect()
-					if not isHit() then
+					moveConn:Disconnect()
+					if not hitTriggered then
 						playHitVFX(currentPos)
 						fireball:Destroy()
 					end

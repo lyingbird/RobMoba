@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 local RuneConfig = require(ReplicatedStorage:WaitForChild("RuneConfig"))
 local ItemConfig = require(ReplicatedStorage:WaitForChild("ItemConfig"))
 
@@ -11,7 +11,7 @@ local playerInventories = {} -- [userId] = { [itemID] = true }
 
 local function buildDefaultInventory()
 	local inv = {}
-	for id in pairs(SkillConfig) do
+	for id in pairs(SkillRegistry) do
 		inv[id] = true
 	end
 	for id in pairs(RuneConfig) do

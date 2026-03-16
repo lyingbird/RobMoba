@@ -10,7 +10,7 @@ local mouse = player:GetMouse()
 local MovementManager = require(script.Parent:WaitForChild("MovementManager"))
 local CooldownManager = require(script.Parent:WaitForChild("CooldownManager"))
 local UIManager = require(script.Parent.Parent:WaitForChild("UIManager"))
-local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 local CinematicManager = require(script.Parent:WaitForChild("CinematicManager"))
 
 -- 全局启用/禁用开关（由 GameManager 状态控制）
@@ -194,11 +194,11 @@ local currentIndicatorType = "line" -- "line" or "circle"
 
 local function getSkillIndicatorInfo(key)
 	local skillID = UIManager.GetSkillIDInSlot(key)
-	if not skillID or not SkillConfig[skillID] then
+	if not skillID or not SkillRegistry[skillID] then
 		return "line", 40, 3, 40
 	end
-	local config = SkillConfig[skillID]
-	local range = config.BaseRange or 40
+	local config = SkillRegistry[skillID]
+	local range = config.Range or config.BaseRange or 40
 	local width = 3
 
 	if config.ConvergeIndicator then
@@ -320,7 +320,7 @@ function InputManager.Init()
 
 			-- 即时释放技能：按下直接释放，不进入瞄准
 			local instantSkillID = UIManager.GetSkillIDInSlot(pressedSkillKey)
-			if instantSkillID and SkillConfig[instantSkillID] and SkillConfig[instantSkillID].InstantCast then
+			if instantSkillID and SkillRegistry[instantSkillID] and SkillRegistry[instantSkillID].InstantCast then
 				if currentState == "AIMING" then
 					interruptCasting()
 				end
@@ -405,7 +405,7 @@ function InputManager.Init()
 
 				-- 检查是否是即时释放技能
 				local skillID = UIManager.GetSkillIDInSlot(keyToCast)
-				local isInstant = skillID and SkillConfig[skillID] and SkillConfig[skillID].InstantCast
+				local isInstant = skillID and SkillRegistry[skillID] and SkillRegistry[skillID].InstantCast
 
 				if isInstant then
 					-- 即时释放，无读条
@@ -432,9 +432,9 @@ function InputManager.Init()
 
 						-- 如果是引导类技能（安琪拉R），开始发送鼠标方向
 						local chanSkillID = UIManager.GetSkillIDInSlot(keyToCast)
-						if chanSkillID and SkillConfig[chanSkillID] and SkillConfig[chanSkillID].TurnSpeed then
+						if chanSkillID and SkillRegistry[chanSkillID] and SkillRegistry[chanSkillID].TurnSpeed then
 							isChanneling = true
-							local channelDuration = SkillConfig[chanSkillID].Duration or 3
+							local channelDuration = SkillRegistry[chanSkillID].Duration or 3
 							task.delay(channelDuration, function()
 								isChanneling = false
 							end)

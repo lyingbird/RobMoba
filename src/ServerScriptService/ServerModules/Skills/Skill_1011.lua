@@ -1,32 +1,23 @@
--- 后羿 R: 烈日裁决
--- 向指定方向射出火焰箭，命中眩晕+范围爆炸
-
+-- ==========================================
+-- Skill_1011: HouYiR (烈日裁决)
+-- Archetype: ProjectileSkill (复合: 命中后落点爆炸)
+-- 效果: 3042(Damage 500), 3043(Stun 1.5s), 3044(AOE Damage 250)
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
-local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local ProjectileSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("ProjectileSkill"))
+local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
 
-local HouYiR = setmetatable({}, BaseSkill)
+local HouYiR = setmetatable({}, ProjectileSkill)
 HouYiR.__index = HouYiR
 
 function HouYiR.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), HouYiR)
+	return setmetatable(ProjectileSkill.new(skillID), HouYiR)
 end
 
-local function applyStun(humanoid, stunDuration)
-	local originalSpeed = humanoid.WalkSpeed
-	local originalJump = humanoid.JumpPower
-	humanoid.WalkSpeed = 0
-	humanoid.JumpPower = 0
-	task.delay(stunDuration, function()
-		if humanoid and humanoid.Parent then
-			humanoid.WalkSpeed = originalSpeed
-			humanoid.JumpPower = originalJump
-		end
-	end)
-end
+-- ===== VFX =====
 
 local function createExplosionVFX(position, radius)
 	local flash = Instance.new("Part")
@@ -72,34 +63,7 @@ local function createExplosionVFX(position, radius)
 	Debris:AddItem(ring, 0.5)
 end
 
-function HouYiR:OnCast(player, targetPos)
-	local character = player.Character
-	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-	local rootPart = character.HumanoidRootPart
-
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local finalDamage = (self.Config.BaseDamage or 500) * powerScale
-	local explosionDamage = (self.Config.ExplosionDamage or 250) * powerScale
-	local maxRange = self.Config.BaseRange or 100
-	local speed = self.Config.Speed or 65
-	local stunDuration = self.Config.StunDuration or 1.5
-	local explosionRadius = self.Config.ExplosionRadius or 12
-
-	local startPos = rootPart.Position
-	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
-
-	-- 火焰箭
-	local arrow = Instance.new("Part")
-	arrow.Size = Vector3.new(0.6, 0.6, 4)
-	arrow.Material = Enum.Material.Neon
-	arrow.Color = Color3.fromRGB(255, 120, 0)
-	arrow.CFrame = CFrame.new(startPos + direction * 3, startPos + direction * 4)
-	arrow.CanCollide = false
-	arrow.Anchored = false
-	arrow.Parent = workspace
-
-	-- 拖尾
+local function createArrowTrail(arrow)
 	local a0 = Instance.new("Attachment")
 	a0.Position = Vector3.new(0, 0, -2)
 	a0.Parent = arrow
@@ -123,69 +87,44 @@ function HouYiR:OnCast(player, targetPos)
 	light.Brightness = 4
 	light.Range = 15
 	light.Parent = arrow
+end
 
-	local att = Instance.new("Attachment")
-	att.Parent = arrow
-	local lv = Instance.new("LinearVelocity")
-	lv.Attachment0 = att
-	lv.VectorVelocity = direction * speed
-	lv.MaxForce = math.huge
-	lv.RelativeTo = Enum.ActuatorRelativeTo.World
-	lv.Parent = arrow
+-- ===== 重写 _createBullet: 添加拖尾 =====
+function HouYiR:_createBullet(config, startPos, direction)
+	local bullet = ProjectileSkill._createBullet(self, config, startPos, direction)
+	createArrowTrail(bullet)
+	return bullet
+end
 
-	local hitTriggered = false
+-- ===== 爆炸逻辑 (命中/到期均触发) =====
+local function triggerExplosion(self, player, position)
+	local character = player.Character
+	if not character then return end
 
-	local function explode(pos)
-		if hitTriggered then return end
-		hitTriggered = true
+	local explosionRadius = self.Config.ExplosionRadius or 12
+	local explosionEffects = self.Config.ExplosionEffects or {}
+	local explosionCC = self.Config.ExplosionCC or {}
 
-		createExplosionVFX(pos, explosionRadius)
-		arrow:Destroy()
+	-- 爆炸 VFX
+	createExplosionVFX(position, explosionRadius)
 
-		-- PvP: 使用 CombatUtils 统一检测范围内敌方
-		local enemies = CombatUtils.getEnemiesInRange(player, pos, explosionRadius, character)
-		for _, model in ipairs(enemies) do
-			local humanoid = model:FindFirstChild("Humanoid")
-			if humanoid then
-				model:SetAttribute("LastDamagePlayer", player.Name)
-				humanoid:TakeDamage(explosionDamage)
-				applyStun(humanoid, stunDuration)
-			end
-		end
+	-- 爆炸 AOE 效果 (通过 SkillHelper → BuffSystem)
+	local allEffects = {}
+	for _, id in ipairs(explosionEffects) do table.insert(allEffects, id) end
+	for _, id in ipairs(explosionCC) do table.insert(allEffects, id) end
+	if #allEffects > 0 then
+		SkillHelper.ApplyAreaEffects(self, character, player, position, explosionRadius, allEffects)
 	end
+end
 
-	arrow.Touched:Connect(function(hit)
-		if hitTriggered or hit:IsDescendantOf(character) then return end
-		local targetModel = hit.Parent
-		local humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
-		if not humanoid then
-			targetModel = hit.Parent and hit.Parent.Parent
-			humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
-		end
+-- ===== 命中回调: 触发爆炸 =====
+function HouYiR:OnProjectileHit(player, target, hitPos)
+	triggerExplosion(self, player, hitPos)
+end
 
-		if humanoid then
-			-- PvP: 只对敌方目标直接命中
-			if not CombatUtils.isEnemy(player, targetModel) then return end
-			targetModel:SetAttribute("LastDamagePlayer", player.Name)
-			humanoid:TakeDamage(finalDamage)
-			applyStun(humanoid, stunDuration)
-			explode(arrow.Position)
-		elseif hit.CanCollide then
-			explode(arrow.Position)
-		end
-	end)
-
-	task.spawn(function()
-		while not hitTriggered and arrow and arrow.Parent do
-			if (arrow.Position - startPos).Magnitude >= maxRange then
-				explode(arrow.Position)
-				break
-			end
-			task.wait(0.05)
-		end
-	end)
-
-	Debris:AddItem(arrow, 5)
+-- ===== 超距离: 也触发爆炸 =====
+function HouYiR:OnProjectileExpire(player, lastPos)
+	triggerExplosion(self, player, lastPos)
 end
 
 return HouYiR

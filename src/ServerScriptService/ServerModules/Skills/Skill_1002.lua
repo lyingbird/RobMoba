@@ -1,19 +1,22 @@
--- 拉克丝 Q: 光之束缚 (Light Binding)
--- 发射一道光线，命中第一个敌人时束缚并造成伤害
-
+-- ==========================================
+-- Skill_1002: LuxQ (光之束缚)
+-- Archetype: ProjectileSkill (MaxPierceCount=2)
+-- 效果: 3001(Damage 250), 3002(Root 1s)
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
-local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local ProjectileSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("ProjectileSkill"))
 
-local LuxQ = setmetatable({}, BaseSkill)
+local LuxQ = setmetatable({}, ProjectileSkill)
 LuxQ.__index = LuxQ
 
 function LuxQ.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), LuxQ)
+	return setmetatable(ProjectileSkill.new(skillID), LuxQ)
 end
+
+-- ===== VFX =====
 
 local function createBindVFX(targetModel, duration)
 	local rootPart = targetModel:FindFirstChild("HumanoidRootPart")
@@ -109,103 +112,29 @@ local function createProjectileTrail(projectile)
 	light.Parent = projectile
 end
 
+-- ===== Archetype 回调 =====
+
+-- 重写 OnCast: 在创建弹体后添加拖尾VFX
 function LuxQ:OnCast(player, targetPos)
-	local character = player.Character
-	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-	local rootPart = character.HumanoidRootPart
+	-- 调用父类标准弹道流程
+	ProjectileSkill.OnCast(self, player, targetPos)
+end
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local finalDamage = (self.Config.BaseDamage or 250) * powerScale
-	local maxRange = self.Config.BaseRange or 50
-	local speed = self.Config.Speed or 55
-	local bindDuration = 1.5
+-- 弹体创建后添加拖尾 (重写 _createBullet)
+function LuxQ:_createBullet(config, startPos, direction)
+	local bullet = ProjectileSkill._createBullet(self, config, startPos, direction)
+	createProjectileTrail(bullet)
+	return bullet
+end
 
-	-- MultiShot: 增加最大命中目标数
-	local extraShots = self:GetRuneStat("MultiShot")
-	local maxHitsBase = 2 + extraShots
+-- 命中回调: 播放束缚 VFX
+function LuxQ:OnProjectileHit(player, target, hitPos)
+	createBindVFX(target, 1.0) -- 与 EffectConfig[3002].Duration 一致
+end
 
-	local startPos = rootPart.Position
-	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
-
-	-- 弹道光球
-	local projectile = Instance.new("Part")
-	projectile.Shape = Enum.PartType.Ball
-	projectile.Size = Vector3.new(2, 2, 2)
-	projectile.Material = Enum.Material.Neon
-	projectile.Color = Color3.fromRGB(255, 240, 180)
-	projectile.CFrame = CFrame.new(startPos + direction * 3, startPos + direction * 4)
-	projectile.CanCollide = false
-	projectile.Anchored = false
-	projectile.Parent = workspace
-
-	createProjectileTrail(projectile)
-
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = projectile
-
-	local lv = Instance.new("LinearVelocity")
-	lv.Attachment0 = attachment
-	lv.VectorVelocity = direction * speed
-	lv.MaxForce = math.huge
-	lv.RelativeTo = Enum.ActuatorRelativeTo.World
-	lv.Parent = projectile
-
-	local hitCount = 0
-	local maxHits = maxHitsBase
-	local hitTargets = {}
-
-	projectile.Touched:Connect(function(hit)
-		if hit:IsDescendantOf(character) then return end
-		local targetModel = hit.Parent
-		local humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
-		if not humanoid then
-			targetModel = hit.Parent and hit.Parent.Parent
-			humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
-		end
-
-		if humanoid and not hitTargets[targetModel] then
-			-- PvP: 只对敌方目标生效
-			if not CombatUtils.isEnemy(player, targetModel) then return end
-			hitTargets[targetModel] = true
-			hitCount = hitCount + 1
-			targetModel:SetAttribute("LastDamagePlayer", player.Name)
-			humanoid:TakeDamage(finalDamage)
-
-			-- 束缚: 临时锚定根部件
-			local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
-			if targetRoot then
-				local originalAnchored = targetRoot.Anchored
-				targetRoot.Anchored = true
-				createBindVFX(targetModel, bindDuration)
-
-				task.delay(bindDuration, function()
-					if targetRoot and targetRoot.Parent then
-						targetRoot.Anchored = originalAnchored
-					end
-				end)
-			end
-
-			if hitCount >= maxHits then
-				projectile:Destroy()
-			end
-		elseif not humanoid and hit.CanCollide then
-			projectile:Destroy()
-		end
-	end)
-
-	-- 超距离销毁
-	task.spawn(function()
-		while projectile and projectile.Parent do
-			if (projectile.Position - startPos).Magnitude >= maxRange then
-				projectile:Destroy()
-				break
-			end
-			task.wait(0.05)
-		end
-	end)
-
-	Debris:AddItem(projectile, 3)
+-- 穿透回调: 第二个目标也播放束缚 VFX
+function LuxQ:OnProjectilePierce(player, target, hitPos, count)
+	createBindVFX(target, 1.0)
 end
 
 return LuxQ

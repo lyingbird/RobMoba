@@ -291,11 +291,10 @@ end
 
 local function equipHeroSkills(p, heroId)
 	-- 服务端技能装备由客户端通过 EquipSkillEvent:FireServer 完成
-	-- 这里只验证 HeroConfig 数据的完整性并记录日志
-	local HeroConfig = require(ReplicatedStorage:WaitForChild("HeroConfig"))
-	local heroData = HeroConfig[heroId]
+	-- 这里只验证 HeroRegistry 数据的完整性并记录日志
+	local heroData = HeroRegistry[heroId]
 	if not heroData or not heroData.Skills then
-		warn(("[GameManager] HeroConfig missing for %s"):format(heroId))
+		warn(("[GameManager] HeroRegistry missing for %s"):format(heroId))
 		return
 	end
 

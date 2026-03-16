@@ -9,8 +9,8 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
 
-local HeroConfig = require(ReplicatedStorage:WaitForChild("HeroConfig"))
-local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
+local HeroRegistry = require(ReplicatedStorage:WaitForChild("HeroRegistry"))
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 
 local HeroAnimator = {}
 
@@ -411,7 +411,7 @@ function HeroAnimator.PlayCast(key)
 	if not config then return end
 	local skillID = config.Skills and config.Skills[key]
 	if skillID then
-		local sd = SkillConfig[skillID]
+		local sd = SkillRegistry[skillID]
 		if sd and sd.Duration and sd.Duration > 1 then
 			setState(STATE.CHANNEL, key)
 			return
@@ -425,7 +425,7 @@ function HeroAnimator.Init(char, heroID)
 	character = char
 	humanoid = char:WaitForChild("Humanoid")
 	animator = humanoid:FindFirstChildOfClass("Animator")
-	config = HeroConfig[heroID]
+	config = HeroRegistry[heroID]
 	if not config then warn("[HeroAnimator] Unknown hero: " .. tostring(heroID)); return end
 	cacheJoints()
 	if config.Accessory then createBook() end

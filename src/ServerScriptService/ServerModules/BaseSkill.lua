@@ -1,5 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SkillConfig = require(ReplicatedStorage:WaitForChild("SkillConfig"))
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 local RuneConfig = require(ReplicatedStorage:WaitForChild("RuneConfig"))
 
 local BaseSkill = {}
@@ -8,7 +8,7 @@ BaseSkill.__index = BaseSkill
 function BaseSkill.new(skillID)
 	local self = setmetatable({}, BaseSkill)
 	self.ID = skillID
-	self.Config = SkillConfig[skillID] or { Name = "Unknown", BaseCD = 5 }
+	self.Config = SkillRegistry[skillID] or { Name = "Unknown", BaseCD = 5 }
 	self.RuneSlots = { [1] = nil, [2] = nil, [3] = nil }
 	self.LastCastTime = 0
 	self.IsRecastable = false
@@ -36,16 +36,24 @@ function BaseSkill:GetRuneStat(statType)
 end
 
 function BaseSkill:GetFinalCD()
-	local baseCD = self.Config.BaseCD or 5
+	local baseCD = self.Config.CD or self.Config.BaseCD or 5
 	local cdrValue = self:GetRuneStat("CDR")
 	return math.max(0.1, baseCD * (1 - cdrValue))
 end
 
-function BaseSkill:CanCast()
+function BaseSkill:CanCast(player)
+	-- REQ-009: 训练场无CD模式
+	if player and shared.TrainingManager and shared.TrainingManager.IsNoCooldown(player) then
+		return true
+	end
 	return (os.clock() - self.LastCastTime) >= self:GetFinalCD()
 end
 
-function BaseSkill:StartCooldown()
+function BaseSkill:StartCooldown(player)
+	-- REQ-009: 训练场无CD模式 — 不设置 LastCastTime
+	if player and shared.TrainingManager and shared.TrainingManager.IsNoCooldown(player) then
+		return
+	end
 	self.LastCastTime = os.clock()
 end
 

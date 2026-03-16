@@ -1,22 +1,21 @@
--- 拉克丝 E: 透光奇点 (Lucent Singularity)
--- 投掷一个光球到目标区域，持续减速区域内敌人，再次施放或到期后引爆造成伤害
-
+-- ==========================================
+-- Skill_1004: LuxE (透光奇点)
+-- Archetype: AreaSkill (CanRecast=true)
+-- 效果: 3004(Slow), 3005(Damage)
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
-local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local AreaSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("AreaSkill"))
+local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
 
-local LuxE = setmetatable({}, BaseSkill)
+local LuxE = setmetatable({}, AreaSkill)
 LuxE.__index = LuxE
 
--- 存储每个玩家当前存在的E区域，用于二次引爆
-local activeZones = {}
-
 function LuxE.new(skillID)
-	local self = setmetatable(BaseSkill.new(skillID), LuxE)
+	local self = setmetatable(AreaSkill.new(skillID), LuxE)
 	self.IsRecastable = true
 	return self
 end
@@ -28,8 +27,8 @@ function LuxE:CanCast()
 	return (os.clock() - self.LastCastTime) >= self:GetFinalCD()
 end
 
+-- VFX: 区域特效
 local function createZoneVFX(position, radius)
-	-- 地面光圈
 	local zone = Instance.new("Part")
 	zone.Shape = Enum.PartType.Cylinder
 	zone.Material = Enum.Material.Neon
@@ -41,7 +40,6 @@ local function createZoneVFX(position, radius)
 	zone.Transparency = 0.5
 	zone.Parent = workspace
 
-	-- 浮动光球（中心）
 	local orb = Instance.new("Part")
 	orb.Shape = Enum.PartType.Ball
 	orb.Material = Enum.Material.Neon
@@ -53,45 +51,20 @@ local function createZoneVFX(position, radius)
 	orb.Transparency = 0.2
 	orb.Parent = workspace
 
-	-- 光球上下浮动
-	local floatTween = TweenService:Create(orb, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+	TweenService:Create(orb, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
 		Position = position + Vector3.new(0, 4.5, 0)
-	})
-	floatTween:Play()
+	}):Play()
 
-	-- 光球点光
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 245, 180)
 	light.Brightness = 3
 	light.Range = radius + 5
 	light.Parent = orb
 
-	-- 粒子下落效果
-	local attach = Instance.new("Attachment")
-	attach.Parent = orb
-
-	local particles = Instance.new("ParticleEmitter")
-	particles.Color = ColorSequence.new(Color3.fromRGB(255, 240, 170))
-	particles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.5),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	particles.Lifetime = NumberRange.new(0.5, 1)
-	particles.Rate = 25
-	particles.Speed = NumberRange.new(1, 4)
-	particles.SpreadAngle = Vector2.new(180, 180)
-	particles.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	particles.LightEmission = 1
-	particles.Parent = attach
-
-	return zone, orb, particles, floatTween
+	return zone, orb
 end
 
 local function createDetonationVFX(position, radius)
-	-- 爆炸闪光
 	local flash = Instance.new("Part")
 	flash.Shape = Enum.PartType.Ball
 	flash.Material = Enum.Material.Neon
@@ -100,25 +73,14 @@ local function createDetonationVFX(position, radius)
 	flash.Position = position
 	flash.Anchored = true
 	flash.CanCollide = false
-	flash.Transparency = 0
 	flash.Parent = workspace
-
-	local flashLight = Instance.new("PointLight")
-	flashLight.Color = Color3.fromRGB(255, 250, 200)
-	flashLight.Brightness = 6
-	flashLight.Range = radius * 2
-	flashLight.Parent = flash
 
 	TweenService:Create(flash, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Size = Vector3.new(radius * 2, radius * 2, radius * 2),
 		Transparency = 1
 	}):Play()
-
-	TweenService:Create(flashLight, TweenInfo.new(0.4), { Brightness = 0 }):Play()
-
 	Debris:AddItem(flash, 0.5)
 
-	-- 冲击波环
 	local ring = Instance.new("Part")
 	ring.Shape = Enum.PartType.Cylinder
 	ring.Material = Enum.Material.Neon
@@ -134,62 +96,24 @@ local function createDetonationVFX(position, radius)
 		Size = Vector3.new(0.3, radius * 3, radius * 3),
 		Transparency = 1
 	}):Play()
-
 	Debris:AddItem(ring, 0.5)
 end
 
-local function detonateZone(zoneData)
-	if zoneData.detonated then return end
-	zoneData.detonated = true
-
-	local position = zoneData.position
-	local radius = zoneData.radius
-	local damage = zoneData.damage
-
-	createDetonationVFX(position, radius)
-
-	-- PvP: 使用 CombatUtils 统一检测范围内敌方
-	local casterPlayer = zoneData.casterPlayer
-	local enemies = CombatUtils.getEnemiesInRange(casterPlayer, position, radius, zoneData.casterCharacter)
-	for _, model in ipairs(enemies) do
-		local humanoid = model:FindFirstChild("Humanoid")
-		if humanoid then
-			model:SetAttribute("LastDamagePlayer", casterPlayer.Name)
-			humanoid:TakeDamage(damage)
-		end
-	end
-
-	-- 清理VFX
-	if zoneData.zonePart then zoneData.zonePart:Destroy() end
-	if zoneData.orbPart then zoneData.orbPart:Destroy() end
-	if zoneData.heartbeatConn then zoneData.heartbeatConn:Disconnect() end
-end
-
+-- 重写 OnCast: 添加飞行弹体动画, 然后调用 AreaSkill 逻辑
 function LuxE:OnCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-	local userId = player.UserId
 
-	-- 如果已有活跃区域，直接引爆
-	if activeZones[userId] and not activeZones[userId].detonated then
-		detonateZone(activeZones[userId])
-		activeZones[userId] = nil
-		self.WaitingForRecast = false
+	-- 如果 Recast, 委托父类处理
+	if self.WaitingForRecast then
+		AreaSkill.OnCast(self, player, targetPos)
 		return
 	end
-
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local finalDamage = (self.Config.BaseDamage or 240) * powerScale
-	-- MultiShot: 增加区域半径
-	local extraShots = self:GetRuneStat("MultiShot")
-	local radius = (self.Config.AreaRadius or 15) + extraShots * 3
-	local duration = self.Config.Duration or 5
 
 	local rootPart = character.HumanoidRootPart
 	local startPos = rootPart.Position + Vector3.new(0, 2, 0)
 	local landPos = Vector3.new(targetPos.X, targetPos.Y, targetPos.Z)
-	local travelSpeed = self.Config.Speed or 40
+	local travelSpeed = self.Config.TravelSpeed or 40
 
 	-- 飞行弹体动画
 	local travelOrb = Instance.new("Part")
@@ -200,131 +124,59 @@ function LuxE:OnCast(player, targetPos)
 	travelOrb.Position = startPos
 	travelOrb.Anchored = true
 	travelOrb.CanCollide = false
-	travelOrb.Transparency = 0.1
 	travelOrb.Parent = workspace
-
-	-- 飞行拖尾
-	local travelAttach = Instance.new("Attachment")
-	travelAttach.Parent = travelOrb
-
-	local trail = Instance.new("Trail")
-	local trailAttach2 = Instance.new("Attachment")
-	trailAttach2.Position = Vector3.new(0, 0, 0.5)
-	trailAttach2.Parent = travelOrb
-	trail.Attachment0 = travelAttach
-	trail.Attachment1 = trailAttach2
-	trail.Color = ColorSequence.new(Color3.fromRGB(255, 240, 170), Color3.fromRGB(255, 200, 100))
-	trail.Lifetime = 0.3
-	trail.MinLength = 0.1
-	trail.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	trail.WidthScale = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 2),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	trail.LightEmission = 1
-	trail.Parent = travelOrb
 
 	local travelDist = (landPos - startPos).Magnitude
 	local travelTime = math.clamp(travelDist / travelSpeed, 0.15, 1.2)
-
-	-- 抛物线飞行
 	local arcHeight = math.min(travelDist * 0.15, 8)
-	local startTime = os.clock()
+	local travelStart = os.clock()
+
 	local travelConn
 	travelConn = RunService.Heartbeat:Connect(function()
-		local elapsed = os.clock() - startTime
-		local t = math.clamp(elapsed / travelTime, 0, 1)
-
+		local t = math.clamp((os.clock() - travelStart) / travelTime, 0, 1)
 		local flatPos = startPos:Lerp(landPos, t)
-		local yOffset = arcHeight * 4 * t * (1 - t) -- parabola
+		local yOffset = arcHeight * 4 * t * (1 - t)
 		travelOrb.Position = Vector3.new(flatPos.X, flatPos.Y + yOffset, flatPos.Z)
-
 		if t >= 1 then
 			travelConn:Disconnect()
 			travelOrb:Destroy()
 		end
 	end)
 
-	-- 等待弹体到达后再创建区域
 	task.wait(travelTime)
 
-	local zonePart, orbPart, particles, floatTween = createZoneVFX(landPos, radius)
+	-- 调用父类创建区域
+	AreaSkill.OnCast(self, player, targetPos)
+end
 
-	local zoneData = {
-		position = landPos,
-		radius = radius,
-		damage = finalDamage,
-		casterCharacter = character,
-		casterPlayer = player,
-		zonePart = zonePart,
-		orbPart = orbPart,
-		detonated = false,
-		heartbeatConn = nil,
-	}
+-- 额外 VFX: 区域创建时
+function LuxE:OnAreaCreate(player, areaData)
+	local zone, orb = createZoneVFX(areaData.position, areaData.radius)
+	areaData._vfxZone = zone
+	areaData._vfxOrb = orb
+end
 
-	-- 区域内减速效果
-	local slowedTargets = {}
-	zoneData.heartbeatConn = RunService.Heartbeat:Connect(function()
-		if zoneData.detonated then return end
-
-		-- PvP: 使用 CombatUtils 获取范围内所有敌方
-		local enemies = CombatUtils.getEnemiesInRange(player, landPos, radius, character)
-		local currentInRange = {}
-		for _, model in ipairs(enemies) do
-			currentInRange[model] = true
-			local humanoid = model:FindFirstChild("Humanoid")
-			if humanoid and not slowedTargets[model] then
-				slowedTargets[model] = humanoid.WalkSpeed
-				humanoid.WalkSpeed = humanoid.WalkSpeed * 0.5
-			end
+-- Recast: 引爆区域
+function LuxE:OnRecast(player, areaData)
+	createDetonationVFX(areaData.position, areaData.radius)
+	-- 引爆伤害 (OnExpireEffects)
+	local config = self:GetAreaConfig()
+	if #config.OnExpireEffects > 0 then
+		local character = player.Character
+		if character then
+			SkillHelper.ApplyAreaEffects(self, character, player, areaData.position, areaData.radius, config.OnExpireEffects)
 		end
+	end
+	-- 清理额外 VFX
+	if areaData._vfxZone then areaData._vfxZone:Destroy() end
+	if areaData._vfxOrb then areaData._vfxOrb:Destroy() end
+end
 
-		-- 离开范围的目标恢复速度
-		for model, originalSpeed in pairs(slowedTargets) do
-			if not currentInRange[model] then
-				local humanoid = model:FindFirstChild("Humanoid")
-				if humanoid then
-					humanoid.WalkSpeed = originalSpeed
-				end
-				slowedTargets[model] = nil
-			end
-		end
-	end)
-
-	activeZones[userId] = zoneData
-
-	-- 超时自动引爆
-	task.delay(duration, function()
-		if activeZones[userId] == zoneData and not zoneData.detonated then
-			detonateZone(zoneData)
-			activeZones[userId] = nil
-			self.WaitingForRecast = false
-			-- Start cooldown on zone expiry
-			self:StartCooldown()
-			local ReplicatedStorage = game:GetService("ReplicatedStorage")
-			local SyncCooldownEvent = ReplicatedStorage:FindFirstChild("SyncCooldownEvent")
-			local SyncRecastEvent = ReplicatedStorage:FindFirstChild("SyncRecastEvent")
-			if SyncRecastEvent then
-				SyncRecastEvent:FireClient(player, self.ID, false)
-			end
-			if SyncCooldownEvent then
-				-- Find the key for this skill
-				local finalCD = self:GetFinalCD()
-				SyncCooldownEvent:FireClient(player, nil, finalCD, self.ID)
-			end
-		end
-
-		-- 恢复所有减速
-		for model, originalSpeed in pairs(slowedTargets) do
-			local humanoid = model:FindFirstChild("Humanoid")
-			if humanoid then
-				humanoid.WalkSpeed = originalSpeed
-			end
-		end
-	end)
+-- 区域到期: 也引爆
+function LuxE:OnAreaExpire(player, areaData)
+	createDetonationVFX(areaData.position, areaData.radius)
+	if areaData._vfxZone then areaData._vfxZone:Destroy() end
+	if areaData._vfxOrb then areaData._vfxOrb:Destroy() end
 end
 
 return LuxE

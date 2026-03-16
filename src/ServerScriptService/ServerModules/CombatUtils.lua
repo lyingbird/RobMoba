@@ -54,6 +54,11 @@ function CombatUtils.isEnemy(attackerPlayer: Player, targetModel: Model): boolea
 		return true
 	end
 
+	-- 规则1b：训练假人对所有玩家都是敌方（REQ-010）
+	if targetModel:GetAttribute("IsTrainingDummy") == true then
+		return true
+	end
+
 	-- 规则2：检查是否为敌方玩家
 	local targetPlayer = CombatUtils.getPlayerFromModel(targetModel)
 	if not targetPlayer then
@@ -164,6 +169,21 @@ function CombatUtils.getEnemiesInRange(
 		end
 	end
 
+	-- 检查训练假人（REQ-010：假人在 workspace 根目录，不在 敌人 文件夹也不是玩家角色）
+	for _, child in ipairs(workspace:GetChildren()) do
+		if child:IsA("Model") and child:GetAttribute("IsTrainingDummy") == true and child ~= excludeModel then
+			local humanoid = child:FindFirstChild("Humanoid")
+			local rootPart = child:FindFirstChild("HumanoidRootPart")
+			if humanoid and rootPart and humanoid.Health > 0 then
+				local distSq = (rootPart.Position - position).Magnitude
+				distSq = distSq * distSq
+				if distSq <= radiusSq then
+					table.insert(enemies, child)
+				end
+			end
+		end
+	end
+
 	return enemies
 end
 
@@ -214,6 +234,22 @@ function CombatUtils.getNearestEnemy(
 						nearestDistSq = distSq
 						nearest = character
 					end
+				end
+			end
+		end
+	end
+
+	-- 检查训练假人（REQ-010）
+	for _, child in ipairs(workspace:GetChildren()) do
+		if child:IsA("Model") and child:GetAttribute("IsTrainingDummy") == true and child ~= excludeModel then
+			local humanoid = child:FindFirstChild("Humanoid")
+			local rootPart = child:FindFirstChild("HumanoidRootPart")
+			if humanoid and rootPart and humanoid.Health > 0 then
+				local distSq = (rootPart.Position - position).Magnitude
+				distSq = distSq * distSq
+				if distSq <= nearestDistSq then
+					nearestDistSq = distSq
+					nearest = child
 				end
 			end
 		end

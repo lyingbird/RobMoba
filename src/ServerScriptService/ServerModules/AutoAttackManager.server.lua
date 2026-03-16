@@ -20,6 +20,9 @@ end
 
 local AttackTargetEvent = ensureRemoteEvent("AttackTargetEvent")
 local CombatUtils = require(ServerScriptService.ServerModules:WaitForChild("CombatUtils"))
+local PassiveSystem = require(ServerScriptService.ServerModules:WaitForChild("PassiveSystem"))
+local EnergySystem = require(ServerScriptService.ServerModules:WaitForChild("EnergySystem"))
+local EnergyConfig = require(ReplicatedStorage:WaitForChild("EnergyConfig"))
 
 local ATTACK_RANGE = 12
 local ATTACK_INTERVAL = 0.8
@@ -186,6 +189,19 @@ AttackTargetEvent.OnServerEvent:Connect(function(player, targetModel)
 	targetHumanoid:TakeDamage(math.floor(damage))
 	playAttackAnimation(character, targetRoot)
 	createSlashVFX(rootPart, targetRoot)
+
+	-- REQ-007: 被动事件派发 (普攻命中 → OnHit)
+	PassiveSystem:OnEvent("OnHit", player, {
+		target = targetModel,
+		damage = math.floor(damage),
+		damageType = "Physical",
+	})
+
+	-- REQ-007: Rage 能量获取 (普攻命中)
+	local rageGain = EnergyConfig.Rage and EnergyConfig.Rage.GainOnHit or 0
+	if rageGain > 0 then
+		EnergySystem:AddEnergy(player, rageGain, "hit")
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(player)

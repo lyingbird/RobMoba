@@ -1,21 +1,24 @@
--- 后羿 W: 日之塔
--- 指定位置圆形范围持续2秒伤害
-
+-- ==========================================
+-- Skill_1010: HouYiW (日之塔)
+-- Archetype: AreaSkill (标准区域 DoT)
+-- 效果: 3041(DoT 30/tick, 2s)
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
-local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local AreaSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("AreaSkill"))
 
-local HouYiW = setmetatable({}, BaseSkill)
+local HouYiW = setmetatable({}, AreaSkill)
 HouYiW.__index = HouYiW
 
 function HouYiW.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), HouYiW)
+	return setmetatable(AreaSkill.new(skillID), HouYiW)
 end
 
-local function createTowerVFX(position, radius, duration)
+-- ===== VFX =====
+
+local function createTowerVFX(position, radius)
 	-- 地面光圈
 	local zone = Instance.new("Part")
 	zone.Shape = Enum.PartType.Cylinder
@@ -69,51 +72,61 @@ local function createTowerVFX(position, radius, duration)
 	particles.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1)})
 	particles.Parent = attach
 
-	task.delay(duration - 0.3, function()
-		particles.Enabled = false
-		TweenService:Create(zone, TweenInfo.new(0.3), { Transparency = 1 }):Play()
-		TweenService:Create(pillar, TweenInfo.new(0.3), { Transparency = 1 }):Play()
-		TweenService:Create(light, TweenInfo.new(0.3), { Brightness = 0 }):Play()
-	end)
-
-	Debris:AddItem(zone, duration + 0.5)
-	Debris:AddItem(pillar, duration + 0.5)
-	Debris:AddItem(particlePart, duration + 0.5)
+	return zone, pillar, light, particlePart, particles
 end
 
+-- ===== Archetype 回调 =====
+
+-- 区域创建: 添加 Tower VFX
+function HouYiW:OnAreaCreate(player, areaData)
+	local zone, pillar, light, particlePart, particles = createTowerVFX(areaData.position, areaData.radius)
+	areaData._vfxZone = zone
+	areaData._vfxPillar = pillar
+	areaData._vfxLight = light
+	areaData._vfxParticlePart = particlePart
+	areaData._vfxParticles = particles
+end
+
+-- 区域到期: 清理 VFX
+function HouYiW:OnAreaExpire(player, areaData)
+	local duration = areaData.config.Duration or 2
+
+	-- 消散动画
+	if areaData._vfxParticles then areaData._vfxParticles.Enabled = false end
+	if areaData._vfxZone then
+		TweenService:Create(areaData._vfxZone, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+		Debris:AddItem(areaData._vfxZone, 0.5)
+	end
+	if areaData._vfxPillar then
+		TweenService:Create(areaData._vfxPillar, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+		Debris:AddItem(areaData._vfxPillar, 0.5)
+	end
+	if areaData._vfxLight then
+		TweenService:Create(areaData._vfxLight, TweenInfo.new(0.3), { Brightness = 0 }):Play()
+	end
+	if areaData._vfxParticlePart then
+		Debris:AddItem(areaData._vfxParticlePart, 0.5)
+	end
+end
+
+-- 重写 OnCast: 投放位置范围限制
 function HouYiW:OnCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local rootPart = character.HumanoidRootPart
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local damagePerTick = (self.Config.BaseDamage or 120) * powerScale
-	local maxRange = self.Config.BaseRange or 45
-	local radius = self.Config.AreaRadius or 12
-	local duration = self.Config.Duration or 2
-	local tickCount = self.Config.TickCount or 4
-
+	local maxRange = self.Config.Range or 45
 	local startPos = rootPart.Position
 	local dist = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Magnitude
-	local castPos = dist <= maxRange and Vector3.new(targetPos.X, startPos.Y, targetPos.Z) or (startPos + (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit * maxRange)
-
-	createTowerVFX(castPos, radius, duration)
-
-	local tickInterval = duration / tickCount
-	for tick = 1, tickCount do
-		task.delay(tickInterval * (tick - 1), function()
-			-- PvP: 使用 CombatUtils 统一检测范围内敌方
-			local enemies = CombatUtils.getEnemiesInRange(player, castPos, radius, character)
-			for _, model in ipairs(enemies) do
-				local humanoid = model:FindFirstChild("Humanoid")
-				if humanoid then
-					model:SetAttribute("LastDamagePlayer", player.Name)
-					humanoid:TakeDamage(damagePerTick)
-				end
-			end
-		end)
+	local castPos
+	if dist <= maxRange then
+		castPos = Vector3.new(targetPos.X, startPos.Y, targetPos.Z)
+	else
+		castPos = startPos + (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit * maxRange
 	end
+
+	-- 调用父类, 使用限制后的位置
+	AreaSkill.OnCast(self, player, castPos)
 end
 
 return HouYiW

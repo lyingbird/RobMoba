@@ -1,57 +1,35 @@
--- 廉颇 R: 地裂天崩
--- 跳向目标区域连续锤击地面3次，伤害递增，第三次击飞
-
+-- ==========================================
+-- Skill_10530: LianPoR (天崩地裂)
+-- 来源: 王者荣耀 21号表 10530 + 22号表 105300~105392
+-- Archetype: AreaSkill (特殊: 3段跺地, 完全重写OnCast)
+--
+-- 机制:
+--   跳到目标位置 → 自身加速50%+免控+减伤20% (2.8s)
+--   第1跺: 伤害(100+27%AD) + 减速30%(1s)
+--   第2跺: 伤害(150+40%AD) + 减速50%(1s)
+--   第3跺: 伤害(200+54%AD) + 击飞1s
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
+local AreaSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("AreaSkill"))
+local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
+local BuffSystem = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BuffSystem"))
 local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 
-local LianPoR = setmetatable({}, BaseSkill)
+local LianPoR = setmetatable({}, AreaSkill)
 LianPoR.__index = LianPoR
 
 function LianPoR.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), LianPoR)
+	return setmetatable(AreaSkill.new(skillID), LianPoR)
 end
 
-local function knockup(targetRoot, duration)
-	local originalAnchored = targetRoot.Anchored
-	targetRoot.Anchored = true
-	local startPos = targetRoot.Position
-	local upPos = startPos + Vector3.new(0, 10, 0)
-
-	TweenService:Create(targetRoot, TweenInfo.new(duration * 0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		CFrame = CFrame.new(upPos) * (targetRoot.CFrame - targetRoot.CFrame.Position)
-	}):Play()
-
-	task.delay(duration * 0.5, function()
-		if targetRoot and targetRoot.Parent then
-			TweenService:Create(targetRoot, TweenInfo.new(duration * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				CFrame = CFrame.new(startPos) * (targetRoot.CFrame - targetRoot.CFrame.Position)
-			}):Play()
-		end
-	end)
-
-	task.delay(duration, function()
-		if targetRoot and targetRoot.Parent then
-			targetRoot.Anchored = originalAnchored
-		end
-	end)
-end
-
-local function applySlow(humanoid, slowPercent, slowDuration)
-	local origSpeed = humanoid.WalkSpeed
-	humanoid.WalkSpeed = origSpeed * (1 - slowPercent)
-	task.delay(slowDuration, function()
-		if humanoid and humanoid.Parent then
-			humanoid.WalkSpeed = origSpeed
-		end
-	end)
-end
+-- ===== VFX =====
 
 local function createSlamVFX(position, radius, intensity)
-	-- 地面碎裂特效
+	-- 地面碎裂特效 (强度递增)
 	local crack = Instance.new("Part")
 	crack.Shape = Enum.PartType.Cylinder
 	crack.Material = Enum.Material.Neon
@@ -117,38 +95,47 @@ local function createSlamVFX(position, radius, intensity)
 	Debris:AddItem(ring, 0.5)
 end
 
+-- ===== 完全重写 OnCast: 跳跃 + 自身Buff + 3段递增跺地 =====
 function LianPoR:OnCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local rootPart = character.HumanoidRootPart
-	local humanoidSelf = character:FindFirstChild("Humanoid")
+	local humanoidSelf = character:FindFirstChildOfClass("Humanoid")
 	if not humanoidSelf then return end
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local baseDamage = (self.Config.BaseDamage or 200) * powerScale
-	local maxRange = self.Config.BaseRange or 30
-	local radius = self.Config.AreaRadius or 12
+	local maxRange = self.Config.Range or 5
+	local radius = self.Config.Radius or 5
 
 	local startPos = rootPart.Position
-	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
-	local dist = math.min((Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Magnitude, maxRange)
+	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos)
+	local dist = math.min(direction.Magnitude, maxRange)
+	if dist > 0.1 then
+		direction = direction.Unit
+	else
+		direction = rootPart.CFrame.LookVector
+	end
 	local landPos = startPos + direction * dist
 
 	local originalSpeed = humanoidSelf.WalkSpeed
 	humanoidSelf.WalkSpeed = 0
 
-	-- 跳跃到目标位置（抛物线）
+	-- ① 自身增益Buff: 加速50% + 免控 + 减伤20% (来源: 105303/105310/105311)
+	for _, buffId in ipairs(self.Config.SelfBuffOnCast or {}) do
+		BuffSystem:ApplyEffect(character, character, buffId)
+	end
+
+	-- ② 跳跃到目标位置（抛物线, ~0.5s）
 	local jumpTime = 0.5
 	local jumpHeight = 10
 	local jumpStart = os.clock()
 
 	local jumpConn
-	jumpConn = game:GetService("RunService").Heartbeat:Connect(function()
+	jumpConn = RunService.Heartbeat:Connect(function()
 		local t = math.clamp((os.clock() - jumpStart) / jumpTime, 0, 1)
 		local flatPos = startPos:Lerp(landPos, t)
-		local yOffset = jumpHeight * 4 * t * (1 - t)
-		rootPart.CFrame = CFrame.new(flatPos.X, flatPos.Y + yOffset, flatPos.Z) * CFrame.Angles(0, math.atan2(direction.X, direction.Z), 0)
+		local yOffset = jumpHeight * 4 * t * (1 - t) -- 抛物线
+		rootPart.CFrame = CFrame.new(flatPos.X, flatPos.Y + yOffset, flatPos.Z)
+			* CFrame.Angles(0, math.atan2(direction.X, direction.Z), 0)
 
 		if t >= 1 then
 			jumpConn:Disconnect()
@@ -157,64 +144,78 @@ function LianPoR:OnCast(player, targetPos)
 
 	task.wait(jumpTime)
 
-	-- 3次锤击配置
-	local hits = {
-		{ damage = baseDamage * 1.0, slow = 0.15, knockupTime = 0, interval = 0 },
-		{ damage = baseDamage * 1.5, slow = 0.30, knockupTime = 0, interval = 0.6 },
-		{ damage = baseDamage * 2.5, slow = 0,    knockupTime = 1, interval = 0.6 },
+	-- ③ 3次跺地: 递增伤害 + 递增减速 + 第3跺击飞
+	-- 来源: 22号表 105300/301/302(伤害) + 105390/391/392(CC)
+	local stomps = {
+		{
+			effects = self.Config.Stomp1Effects or { 105300 },
+			cc = self.Config.Stomp1CC or { 105390 },
+			interval = 0, -- 落地立即第1跺
+		},
+		{
+			effects = self.Config.Stomp2Effects or { 105301 },
+			cc = self.Config.Stomp2CC or { 105391 },
+			interval = 0.7,
+		},
+		{
+			effects = self.Config.Stomp3Effects or { 105302 },
+			cc = self.Config.Stomp3CC or { 105392 },
+			interval = 0.7,
+		},
 	}
 
-	for hitIndex, hitData in ipairs(hits) do
-		if hitIndex > 1 then
-			task.wait(hitData.interval)
+	for stompIndex, stomp in ipairs(stomps) do
+		if stompIndex > 1 then
+			task.wait(stomp.interval)
 		end
 
 		if not character or not character.Parent or not rootPart or not rootPart.Parent then break end
 
 		local slamPos = rootPart.Position
 
-		-- 上下位移动画
-		local upHeight = 4 + hitIndex * 2
+		-- 上下位移动画 (上升→砸下)
+		local upHeight = 2 + stompIndex * 2
 		local currentPos = rootPart.Position
-		local upPos = currentPos + Vector3.new(0, upHeight, 0)
 
 		-- 上升
 		TweenService:Create(rootPart, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			CFrame = CFrame.new(upPos) * CFrame.Angles(0, math.atan2(direction.X, direction.Z), 0)
+			CFrame = CFrame.new(currentPos + Vector3.new(0, upHeight, 0))
+				* CFrame.Angles(0, math.atan2(direction.X, direction.Z), 0)
 		}):Play()
 		task.wait(0.15)
 
 		-- 砸下
 		TweenService:Create(rootPart, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			CFrame = CFrame.new(currentPos) * CFrame.Angles(0, math.atan2(direction.X, direction.Z), 0)
+			CFrame = CFrame.new(currentPos)
+				* CFrame.Angles(0, math.atan2(direction.X, direction.Z), 0)
 		}):Play()
 		task.wait(0.1)
 
-		-- 地面碎裂VFX
-		createSlamVFX(slamPos, radius, hitIndex)
+		-- VFX (强度递增)
+		createSlamVFX(slamPos, radius, stompIndex)
 
-		-- 范围伤害 — PvP: 使用 CombatUtils 统一检测
-		local enemies = CombatUtils.getEnemiesInRange(player, slamPos, radius, character)
-		for _, model in ipairs(enemies) do
-			local humanoid = model:FindFirstChild("Humanoid")
-			local targetRoot = model:FindFirstChild("HumanoidRootPart")
-			if humanoid and targetRoot then
-				local d = (targetRoot.Position - slamPos).Magnitude
-				-- 中心区域额外伤害
-				local centerBonus = (d <= radius * 0.4) and 1.5 or 1
-				model:SetAttribute("LastDamagePlayer", player.Name)
-				humanoid:TakeDamage(hitData.damage * centerBonus)
+		-- 范围伤害 (通过 SkillHelper → BuffSystem)
+		if #stomp.effects > 0 then
+			SkillHelper.ApplyAreaEffects(self, character, player, slamPos, radius, stomp.effects)
+		end
 
-				if hitData.knockupTime > 0 then
-					knockup(targetRoot, hitData.knockupTime)
-				elseif hitData.slow > 0 then
-					applySlow(humanoid, hitData.slow, 2)
+		-- CC效果: 减速(1/2跺) 或 击飞(第3跺)
+		if #stomp.cc > 0 then
+			local enemies = CombatUtils.getEnemiesInRange(player, slamPos, radius, character)
+			for _, enemy in ipairs(enemies) do
+				for _, ccId in ipairs(stomp.cc) do
+					BuffSystem:ApplyEffect(character, enemy, ccId)
 				end
 			end
 		end
 	end
 
-	-- 恢复移动
+	-- ④ 结束: 移除加速buff + 恢复移动
+	for _, removeId in ipairs(self.Config.RemoveBuffOnEnd or {}) do
+		-- TODO: BuffSystem:RemoveEffect(character, removeId)
+		-- 当前加速buff有Duration会自然过期
+	end
+
 	if humanoidSelf and humanoidSelf.Parent then
 		humanoidSelf.WalkSpeed = originalSpeed
 	end

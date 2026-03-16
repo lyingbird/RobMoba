@@ -1,34 +1,26 @@
--- 安琪拉 W: 混沌火种
--- 发射火种，到达最远处或命中目标时裂变为火焰漩涡，直接命中眩晕1秒
-
+-- ==========================================
+-- Skill_1007: AngelaW (混沌火种)
+-- Archetype: ProjectileSkill (复合: 命中后创建漩涡区域)
+-- 效果: 3021(Damage 400), 3022(Stun 1s), 3023(DoT 80/tick)
+-- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-
-local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
-local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
-
 local RunService = game:GetService("RunService")
 
-local AngelaW = setmetatable({}, BaseSkill)
+local ProjectileSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("Archetypes"):WaitForChild("ProjectileSkill"))
+local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
+local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
+local BuffSystem = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BuffSystem"))
+
+local AngelaW = setmetatable({}, ProjectileSkill)
 AngelaW.__index = AngelaW
 
 function AngelaW.new(skillID)
-	return setmetatable(BaseSkill.new(skillID), AngelaW)
+	return setmetatable(ProjectileSkill.new(skillID), AngelaW)
 end
 
-local function applyStun(humanoid, stunDuration)
-	local originalSpeed = humanoid.WalkSpeed
-	local originalJump = humanoid.JumpPower
-	humanoid.WalkSpeed = 0
-	humanoid.JumpPower = 0
-	task.delay(stunDuration, function()
-		if humanoid and humanoid.Parent then
-			humanoid.WalkSpeed = originalSpeed
-			humanoid.JumpPower = originalJump
-		end
-	end)
-end
+-- ===== VFX =====
 
 local function createVortexVFX(position, radius, duration)
 	-- 火焰漩涡地面圈
@@ -82,113 +74,51 @@ local function createVortexVFX(position, radius, duration)
 	Debris:AddItem(particlePart, duration + 0.5)
 end
 
-function AngelaW:OnCast(player, targetPos)
-	local character = player.Character
-	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-	local rootPart = character.HumanoidRootPart
+-- ===== 复合逻辑: 命中后创建漩涡区域 =====
 
-	local damageBoost = self:GetRuneStat("DamageBoost")
-	local powerScale = (damageBoost > 0) and damageBoost or 1
-	local finalDamage = (self.Config.BaseDamage or 400) * powerScale
-	local maxRange = self.Config.BaseRange or 40
-	local speed = self.Config.Speed or 50
-	local stunDuration = self.Config.StunDuration or 1
+local function createVortexArea(self, player, character, position)
 	local vortexRadius = self.Config.VortexRadius or 8
 	local vortexDuration = self.Config.VortexDuration or 3
-	local vortexDamage = (self.Config.VortexDamage or 80) * powerScale
+	local vortexEffects = self.Config.VortexEffects or {}
 
-	local startPos = rootPart.Position
-	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
+	-- VFX
+	createVortexVFX(position, vortexRadius, vortexDuration)
 
-	-- 发射火种弹体
-	local seed = Instance.new("Part")
-	seed.Shape = Enum.PartType.Ball
-	seed.Size = Vector3.new(2, 2, 2)
-	seed.Material = Enum.Material.Neon
-	seed.Color = Color3.fromRGB(255, 100, 0)
-	seed.CFrame = CFrame.new(startPos + direction * 3, startPos + direction * 4)
-	seed.CanCollide = false
-	seed.Anchored = false
-	seed.Parent = workspace
+	-- 漩涡持续效果 (通过 SkillHelper → BuffSystem)
+	if #vortexEffects > 0 then
+		local tickInterval = vortexDuration / 6
+		for tick = 1, 6 do
+			task.delay(tickInterval * tick, function()
+				if not character or not character.Parent then return end
+				SkillHelper.ApplyAreaEffects(self, character, player, position, vortexRadius, vortexEffects)
+			end)
+		end
+	end
+end
 
-	local att = Instance.new("Attachment")
-	att.Parent = seed
-	local lv = Instance.new("LinearVelocity")
-	lv.Attachment0 = att
-	lv.VectorVelocity = direction * speed
-	lv.MaxForce = math.huge
-	lv.RelativeTo = Enum.ActuatorRelativeTo.World
-	lv.Parent = seed
-
+-- ===== 弹体创建后添加光源 =====
+function AngelaW:_createBullet(config, startPos, direction)
+	local bullet = ProjectileSkill._createBullet(self, config, startPos, direction)
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 120, 0)
 	light.Brightness = 3
 	light.Range = 10
-	light.Parent = seed
+	light.Parent = bullet
+	return bullet
+end
 
-	local directHit = false
-	local detonated = false
+-- ===== 命中回调: 创建漩涡区域 =====
+function AngelaW:OnProjectileHit(player, target, hitPos)
+	local character = player.Character
+	if not character then return end
+	createVortexArea(self, player, character, hitPos)
+end
 
-	local function detonate(pos, wasDirectHit, hitHumanoid)
-		if detonated then return end
-		detonated = true
-		seed:Destroy()
-
-		-- 直接命中眩晕
-		if wasDirectHit and hitHumanoid then
-			hitHumanoid:TakeDamage(finalDamage)
-			applyStun(hitHumanoid, stunDuration)
-		end
-
-		-- 创建火焰漩涡
-		createVortexVFX(pos, vortexRadius, vortexDuration)
-
-		-- 漩涡持续伤害
-		local tickInterval = vortexDuration / 6
-		for tick = 1, 6 do
-			task.delay(tickInterval * tick, function()
-				-- PvP: 使用 CombatUtils 统一检测范围内敌方
-				local enemies = CombatUtils.getEnemiesInRange(player, pos, vortexRadius, character)
-				for _, model in ipairs(enemies) do
-					local humanoid = model:FindFirstChild("Humanoid")
-					if humanoid then
-						model:SetAttribute("LastDamagePlayer", player.Name)
-						humanoid:TakeDamage(vortexDamage)
-					end
-				end
-			end)
-		end
-	end
-
-	seed.Touched:Connect(function(hit)
-		if detonated or hit:IsDescendantOf(character) then return end
-		local targetModel = hit.Parent
-		local humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
-		if not humanoid then
-			targetModel = hit.Parent and hit.Parent.Parent
-			humanoid = targetModel and targetModel:FindFirstChild("Humanoid")
-		end
-
-		if humanoid then
-			-- PvP: 只对敌方目标直接命中
-			if not CombatUtils.isEnemy(player, targetModel) then return end
-			targetModel:SetAttribute("LastDamagePlayer", player.Name)
-			detonate(seed.Position, true, humanoid)
-		end
-	end)
-
-	-- 超距离引爆
-	task.spawn(function()
-		while not detonated and seed and seed.Parent do
-			if (seed.Position - startPos).Magnitude >= maxRange then
-				detonate(seed.Position, false, nil)
-				break
-			end
-			task.wait(0.05)
-		end
-	end)
-
-	Debris:AddItem(seed, 3)
+-- ===== 超距离时也在末端创建漩涡 =====
+function AngelaW:OnProjectileExpire(player, lastPos)
+	local character = player.Character
+	if not character then return end
+	createVortexArea(self, player, character, lastPos)
 end
 
 return AngelaW
