@@ -1,0 +1,183 @@
+{
+  "assets_root": "E:\\trunk\\Project\\Assets",
+  "materials": [
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Circle\\Circle_a_0018.mat",
+      "material_name": "Circle_a_0018",
+      "textures": [
+        {
+          "guid": "d811b1ddaf58e7449b7220da46e3f626",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Circle\\Circle_a_0015.tga",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Circle_a_0015.tga",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\Circle_a_0018.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Crack\\dilie_dr_flq05_02.mat",
+      "material_name": "dilie_dr_flq05_02",
+      "textures": [
+        {
+          "guid": "245fc0334512eba4a977b597456f0064",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\di_van_01.tga",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\di_van_01.tga",
+          "status": "copied"
+        },
+        {
+          "guid": "eae30c50884c74f469b3d86437145817",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Dilie_CPxs_kx_004.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Dilie_CPxs_kx_004.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\dilie_dr_flq05_02.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Glow\\glow_wy_049.mat",
+      "material_name": "glow_wy_049",
+      "textures": [
+        {
+          "guid": "9b0fda31f8d1102429392922d91a16da",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Glow\\Glow_21\\Glow_CPyc_fsw_011.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Glow_CPyc_fsw_011.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\glow_wy_049.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Glow\\Glow_CPgt_wlt_149.mat",
+      "material_name": "Glow_CPgt_wlt_149",
+      "textures": [
+        {
+          "guid": "6fcfa4627ab459a4eb43b9bf8bd5747d",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Glow\\Glow_21\\glow_CPgt_ky_001.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\glow_CPgt_ky_001.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\Glow_CPgt_wlt_149.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Glow\\glow_CPgt_zy_203.mat",
+      "material_name": "glow_CPgt_zy_203",
+      "textures": [
+        {
+          "guid": "4165ac8a2ee2d3e43b68046430fb408c",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Glow\\Glow_21\\glow_CPgt_zy_203.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\glow_CPgt_zy_203.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\glow_CPgt_zy_203.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Stone\\shitou_van_05.mat",
+      "material_name": "shitou_van_05",
+      "textures": [
+        {
+          "guid": "75602a958485815408acd3e0f8a4beab",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\shitou_van_05.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\shitou_van_05.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\shitou_van_05.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Ray\\liuguang_van_008.mat",
+      "material_name": "liuguang_van_008",
+      "textures": [
+        {
+          "guid": "1ba922d5663b17348ada062464d84adb",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Gongben_trail_GW_03.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Gongben_trail_GW_03.png",
+          "status": "copied"
+        },
+        {
+          "guid": "f6c4922e29e8ed7479dcf3f7d77d8682",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Gongben_baofaguang01_RM 1.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Gongben_baofaguang01_RM 1.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\liuguang_van_008.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\ming_van_07.mat",
+      "material_name": "ming_van_07",
+      "textures": [
+        {
+          "guid": "3efdd249b121ba64c8d5f14863875d0f",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\lianpo_Cpmj_yl_04.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\lianpo_Cpmj_yl_04.png",
+          "status": "copied"
+        },
+        {
+          "guid": "a85243b7a97cf6f4ea63adaceb3570d0",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\Cloud_CPmj_yl_003.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Cloud_CPmj_yl_003.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\ming_van_07.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\ming_van_08.mat",
+      "material_name": "ming_van_08",
+      "textures": [
+        {
+          "guid": "1ffe5c100e18c074ea469b12529d7254",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\lianpo_van_04_3_1.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\lianpo_van_04_3_1.png",
+          "status": "copied"
+        },
+        {
+          "guid": "bbcfa429477d9504fbe31ce99f89b808",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\lianpo_van_04_2.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\lianpo_van_04_2.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\ming_van_08.mat"
+    },
+    {
+      "material_path": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Materials\\Crack\\ming_van_04.mat",
+      "material_name": "ming_van_04",
+      "textures": [
+        {
+          "guid": "342c980e5b95c0c4f9124cfe5f1d8112",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\mask_van_03.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\mask_van_03.png",
+          "status": "copied"
+        },
+        {
+          "guid": "379075c67dd796a49ab68a72bf0f8961",
+          "source_asset": "E:\\trunk\\Project\\Assets\\Art_Resources\\Shared\\Effects\\Textures\\dilie_van_07.png",
+          "copied_asset": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\dilie_van_07.png",
+          "status": "copied"
+        }
+      ],
+      "copied_material": "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\materials\\ming_van_04.mat"
+    }
+  ],
+  "copied_assets": [
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Circle_a_0015.tga",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Cloud_CPmj_yl_003.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Dilie_CPxs_kx_004.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Glow_CPyc_fsw_011.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Gongben_baofaguang01_RM 1.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\Gongben_trail_GW_03.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\di_van_01.tga",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\dilie_van_07.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\glow_CPgt_ky_001.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\glow_CPgt_zy_203.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\lianpo_Cpmj_yl_04.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\lianpo_van_04_2.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\lianpo_van_04_3_1.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\mask_van_03.png",
+    "tools\\unity_vfx_to_roblox\\exports\\lianpo_105\\textures\\shitou_van_05.png"
+  ],
+  "missing_texture_guids": []
+}

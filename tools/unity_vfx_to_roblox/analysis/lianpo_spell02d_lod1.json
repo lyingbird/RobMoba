@@ -1,0 +1,288 @@
+{
+  "input": "E:\\trunk\\Project\\Assets\\CustomResources\\Shared\\Prefab_Skill_Effects\\Hero_Skill_Effects\\105_LianPo\\LianPo_attack_Spell02D_LOD1.prefab",
+  "prefabs": [
+    {
+      "prefab_name": "LianPo_attack_Spell02D_LOD1",
+      "prefab_path": "E:\\trunk\\Project\\Assets\\CustomResources\\Shared\\Prefab_Skill_Effects\\Hero_Skill_Effects\\105_LianPo\\LianPo_attack_Spell02D_LOD1.prefab",
+      "game_object_count": 15,
+      "particle_system_count": 8,
+      "particle_renderer_count": 8,
+      "mesh_renderer_count": 3,
+      "mesh_filter_count": 3,
+      "mono_behaviour_count": 2,
+      "particle_render_modes": [
+        "Billboard",
+        "HorizontalBillboard",
+        "Mesh",
+        "StretchBillboard"
+      ],
+      "material_guid_count": 10,
+      "mesh_guid_count": 5,
+      "script_guid_count": 1,
+      "material_guids": [
+        "137bac77b24717947b3065019ec90fe0",
+        "1db4c5d1f47a4a843a091907cc8fec16",
+        "4c6569ddc927ec74d85073fdc7b1aa45",
+        "4e731c066db6f4b4aae044e6a8ab796a",
+        "6da47232325d6214ebbf1c6a759e1e7e",
+        "88d15cb2ee3ae9349b45758f2440b7c6",
+        "95ec88fb2f50f8447b886e4644e32233",
+        "ae09770dcd181be4bab5ee3ed000b811",
+        "f27d0ad7103022e4abc90d6d9aa8ca62",
+        "fd1ee972a6a93f04689a186583067329"
+      ],
+      "mesh_guids": [
+        "1745516085eb5c141a18db8e566aa325",
+        "597099c775338694aa8d8d42d4b976cb",
+        "682305f8dfd8cc04e80be22c324c00b2",
+        "aea238166206573449edae0f4a844a52",
+        "e69afd54ed976f645872a48cea931cd6"
+      ],
+      "script_guids": [
+        "f39ddb808c0584b41a3990683a6c75c9"
+      ],
+      "particle_systems": [
+        {
+          "object_id": "198214442834642616",
+          "game_object_id": "1475897402260690",
+          "duration": "5",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "shitou"
+        },
+        {
+          "object_id": "198235553092114406",
+          "game_object_id": "1653958324985722",
+          "duration": "1",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "Particle System"
+        },
+        {
+          "object_id": "198267645840730674",
+          "game_object_id": "1054416367570688",
+          "duration": "0.1",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "glow1"
+        },
+        {
+          "object_id": "198387078076230668",
+          "game_object_id": "1089239826818798",
+          "duration": "0.1",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "glow_01"
+        },
+        {
+          "object_id": "198502984111307058",
+          "game_object_id": "1579810251312980",
+          "duration": "5",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "guangci01"
+        },
+        {
+          "object_id": "198624055684929848",
+          "game_object_id": "1288505270982310",
+          "duration": "5",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "dilie03"
+        },
+        {
+          "object_id": "198698513138479160",
+          "game_object_id": "1058092383212580",
+          "duration": "1",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "baozha"
+        },
+        {
+          "object_id": "198859230339107288",
+          "game_object_id": "1477872852304822",
+          "duration": "0.1",
+          "looping": "0",
+          "prewarm": null,
+          "start_lifetime": "",
+          "start_speed": "",
+          "start_size": "",
+          "start_color": "",
+          "gravity_modifier": "",
+          "max_particles": null,
+          "play_on_awake": "1",
+          "game_object_name": "glow1_1"
+        }
+      ],
+      "particle_renderers": [
+        {
+          "object_id": "199252665685988286",
+          "game_object_id": "1058092383212580",
+          "render_mode": "Billboard",
+          "material_guid": "4e731c066db6f4b4aae044e6a8ab796a",
+          "mesh_guid": null,
+          "game_object_name": "baozha"
+        },
+        {
+          "object_id": "199263593389372748",
+          "game_object_id": "1288505270982310",
+          "render_mode": "Mesh",
+          "material_guid": "f27d0ad7103022e4abc90d6d9aa8ca62",
+          "mesh_guid": "682305f8dfd8cc04e80be22c324c00b2",
+          "game_object_name": "dilie03"
+        },
+        {
+          "object_id": "199394144760305946",
+          "game_object_id": "1477872852304822",
+          "render_mode": "HorizontalBillboard",
+          "material_guid": "88d15cb2ee3ae9349b45758f2440b7c6",
+          "mesh_guid": "e69afd54ed976f645872a48cea931cd6",
+          "game_object_name": "glow1_1"
+        },
+        {
+          "object_id": "199437604416747824",
+          "game_object_id": "1054416367570688",
+          "render_mode": "HorizontalBillboard",
+          "material_guid": "88d15cb2ee3ae9349b45758f2440b7c6",
+          "mesh_guid": "e69afd54ed976f645872a48cea931cd6",
+          "game_object_name": "glow1"
+        },
+        {
+          "object_id": "199542268191074270",
+          "game_object_id": "1475897402260690",
+          "render_mode": "Billboard",
+          "material_guid": "1db4c5d1f47a4a843a091907cc8fec16",
+          "mesh_guid": null,
+          "game_object_name": "shitou"
+        },
+        {
+          "object_id": "199657713420694912",
+          "game_object_id": "1579810251312980",
+          "render_mode": "StretchBillboard",
+          "material_guid": "fd1ee972a6a93f04689a186583067329",
+          "mesh_guid": null,
+          "game_object_name": "guangci01"
+        },
+        {
+          "object_id": "199783804928914224",
+          "game_object_id": "1089239826818798",
+          "render_mode": "Billboard",
+          "material_guid": "4c6569ddc927ec74d85073fdc7b1aa45",
+          "mesh_guid": null,
+          "game_object_name": "glow_01"
+        },
+        {
+          "object_id": "199869226171948138",
+          "game_object_id": "1653958324985722",
+          "render_mode": "Mesh",
+          "material_guid": "6da47232325d6214ebbf1c6a759e1e7e",
+          "mesh_guid": "aea238166206573449edae0f4a844a52",
+          "game_object_name": "Particle System"
+        }
+      ],
+      "mesh_renderers": [
+        {
+          "object_id": "23369395767593572",
+          "game_object_id": "1383566964065608",
+          "material_guid": "137bac77b24717947b3065019ec90fe0",
+          "game_object_name": "dianzan_quan_03"
+        },
+        {
+          "object_id": "23632264465712082",
+          "game_object_id": "1218567355457150",
+          "material_guid": "ae09770dcd181be4bab5ee3ed000b811",
+          "game_object_name": "dianzan_quan_02"
+        },
+        {
+          "object_id": "23727835058111868",
+          "game_object_id": "1639357883945822",
+          "material_guid": "95ec88fb2f50f8447b886e4644e32233",
+          "game_object_name": "dianzan_quan_04"
+        }
+      ],
+      "mesh_filters": [
+        {
+          "object_id": "33660994190216416",
+          "game_object_id": "1383566964065608",
+          "mesh_guid": "597099c775338694aa8d8d42d4b976cb",
+          "game_object_name": "dianzan_quan_03"
+        },
+        {
+          "object_id": "33731995839733876",
+          "game_object_id": "1218567355457150",
+          "mesh_guid": "1745516085eb5c141a18db8e566aa325",
+          "game_object_name": "dianzan_quan_02"
+        },
+        {
+          "object_id": "33992868632307938",
+          "game_object_id": "1639357883945822",
+          "mesh_guid": "597099c775338694aa8d8d42d4b976cb",
+          "game_object_name": "dianzan_quan_04"
+        }
+      ],
+      "mono_behaviours": [
+        {
+          "object_id": "114732165308035206",
+          "game_object_id": "1091217529780300",
+          "script_guid": "f39ddb808c0584b41a3990683a6c75c9",
+          "game_object_name": "tiaodai03"
+        },
+        {
+          "object_id": "114754489227453910",
+          "game_object_id": "1091217529780300",
+          "script_guid": "f39ddb808c0584b41a3990683a6c75c9",
+          "game_object_name": "tiaodai03"
+        }
+      ]
+    }
+  ]
+}

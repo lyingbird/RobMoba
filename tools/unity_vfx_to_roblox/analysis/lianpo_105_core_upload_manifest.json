@@ -1,0 +1,57 @@
+﻿{
+  "heroId": 105,
+  "heroName": "LianPo",
+  "selectedAt": "2026-03-17",
+  "selectionPolicy": "first-pass core Roblox upload set",
+  "assets": [
+    {
+      "file": "Dilie_CPxs_kx_004.png",
+      "unityRole": "main crack ground texture",
+      "robloxTargets": ["lianpo_ground_crack", "lianpo_slam_explosion", "lianpo_w_release"],
+      "priority": 1,
+      "reason": "Most important ground readability asset for slam and impact moments."
+    },
+    {
+      "file": "Circle_a_0015.tga",
+      "unityRole": "ring circle texture",
+      "robloxTargets": ["lianpo_ring_outer", "lianpo_ring_mid", "lianpo_ring_inner"],
+      "priority": 1,
+      "reason": "Best candidate for prep rings and layered circle pulses."
+    },
+    {
+      "file": "glow_CPgt_zy_203.png",
+      "unityRole": "strong glow sprite",
+      "robloxTargets": ["lianpo_charge_wave", "lianpo_slam_explosion"],
+      "priority": 1,
+      "reason": "Useful universal additive glow for bronze/gold energy highlights."
+    },
+    {
+      "file": "Gongben_trail_GW_03.png",
+      "unityRole": "trail streak texture",
+      "robloxTargets": ["lianpo_charge_wave", "lianpo_charge_dust"],
+      "priority": 2,
+      "reason": "Good for directional slash or trail layers."
+    },
+    {
+      "file": "Glow_CPyc_fsw_011.png",
+      "unityRole": "small burst glow",
+      "robloxTargets": ["lianpo_w_release", "lianpo_slam_explosion"],
+      "priority": 2,
+      "reason": "Compact center flash for explosion beats."
+    },
+    {
+      "file": "shitou_van_05.png",
+      "unityRole": "stone debris texture",
+      "robloxTargets": ["lianpo_slam_explosion"],
+      "priority": 2,
+      "reason": "Optional debris flavor if mobile budget allows."
+    },
+    {
+      "file": "lianpo_Cpmj_yl_04.png",
+      "unityRole": "hero-specific warm dust/energy",
+      "robloxTargets": ["lianpo_charge_aura", "super_armor_aura"],
+      "priority": 2,
+      "reason": "Useful for keeping the aura aligned with hero palette."
+    }
+  ]
+}

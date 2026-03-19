@@ -1,0 +1,593 @@
+{
+  "prefab_dir": "E:\\trunk\\Project\\Assets\\CustomResources\\Shared\\Prefab_Skill_Effects\\Hero_Skill_Effects\\105_LianPo",
+  "families": [
+    {
+      "base_name": "LianPo_attack_01",
+      "classification": "Attack",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_01_LOD1.prefab",
+          "size_bytes": 81027
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_01_LOD2.prefab",
+          "size_bytes": 81045
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_01_LOD3.prefab",
+          "size_bytes": 56218
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_01_LODHDR.prefab",
+          "size_bytes": 81113
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_02",
+      "classification": "Attack",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_02_LOD1.prefab",
+          "size_bytes": 81728
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_02_LOD2.prefab",
+          "size_bytes": 106771
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_02_LOD3.prefab",
+          "size_bytes": 80323
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_02_LODHDR.prefab",
+          "size_bytes": 81695
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_03",
+      "classification": "Attack",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_03_LOD1.prefab",
+          "size_bytes": 144034
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_03_LOD2.prefab",
+          "size_bytes": 98632
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_03_LOD3.prefab",
+          "size_bytes": 77027
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_03_LODHDR.prefab",
+          "size_bytes": 144312
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_04",
+      "classification": "Attack",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_04_LOD1.prefab",
+          "size_bytes": 81117
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_04_LOD2.prefab",
+          "size_bytes": 81138
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_04_LOD3.prefab",
+          "size_bytes": 56307
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_04_LODHDR.prefab",
+          "size_bytes": 81154
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell01B",
+      "classification": "Attack",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell01B_LOD1.prefab",
+          "size_bytes": 123745
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell01B_LOD2.prefab",
+          "size_bytes": 68583
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell01B_LOD3.prefab",
+          "size_bytes": 65951
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell01B_LODHDR.prefab",
+          "size_bytes": 124021
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell02A",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell02A_LOD1.prefab",
+          "size_bytes": 107211
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell02A_LOD2.prefab",
+          "size_bytes": 50111
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell02A_LOD3.prefab",
+          "size_bytes": 27386
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell02A_LODHDR.prefab",
+          "size_bytes": 107576
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell02A_E",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell02A_E_LOD3.prefab",
+          "size_bytes": 107220
+        }
+      },
+      "preferred_source_lod": "LOD3",
+      "lod_count": 1
+    },
+    {
+      "base_name": "LianPo_attack_Spell02D",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell02D_LOD1.prefab",
+          "size_bytes": 208002
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell02D_LOD2.prefab",
+          "size_bytes": 182023
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell02D_LOD3.prefab",
+          "size_bytes": 136250
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell02D_LODHDR.prefab",
+          "size_bytes": 180524
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell02D_E",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell02D_E_LOD1.prefab",
+          "size_bytes": 206293
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell02D_E_LOD2.prefab",
+          "size_bytes": 181342
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell02D_E_LOD3.prefab",
+          "size_bytes": 136569
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell02D_E_LODHDR.prefab",
+          "size_bytes": 202606
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell03A",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell03A_LOD1.prefab",
+          "size_bytes": 129311
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell03A_LOD2.prefab",
+          "size_bytes": 53054
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell03A_LOD3.prefab",
+          "size_bytes": 52251
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell03A_LODHDR.prefab",
+          "size_bytes": 129631
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell03B",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell03B_LOD1.prefab",
+          "size_bytes": 126801
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell03B_LOD2.prefab",
+          "size_bytes": 72836
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell03B_LOD3.prefab",
+          "size_bytes": 72838
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell03B_LODHDR.prefab",
+          "size_bytes": 127058
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell03C",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell03C_LOD1.prefab",
+          "size_bytes": 115786
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell03C_LOD2.prefab",
+          "size_bytes": 82618
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell03C_LOD3.prefab",
+          "size_bytes": 82617
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell03C_LODHDR.prefab",
+          "size_bytes": 116679
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell03D",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell03D_LOD1.prefab",
+          "size_bytes": 123445
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell03D_LOD2.prefab",
+          "size_bytes": 68416
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell03D_LOD3.prefab",
+          "size_bytes": 45849
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell03D_LODHDR.prefab",
+          "size_bytes": 124023
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell03E",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell03E_LOD1.prefab",
+          "size_bytes": 44642
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell03E_LOD2.prefab",
+          "size_bytes": 44632
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell03E_LOD3.prefab",
+          "size_bytes": 44634
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell03E_LODHDR.prefab",
+          "size_bytes": 44618
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell03E_E",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell03E_E_LOD1.prefab",
+          "size_bytes": 44677
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell03E_E_LOD2.prefab",
+          "size_bytes": 44652
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell03E_E_LOD3.prefab",
+          "size_bytes": 44650
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell03E_E_LODHDR.prefab",
+          "size_bytes": 44615
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_Spell03F",
+      "classification": "SkillCore",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_Spell03F_LOD1.prefab",
+          "size_bytes": 43437
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_Spell03F_LOD2.prefab",
+          "size_bytes": 1145
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_Spell03F_LOD3.prefab",
+          "size_bytes": 1145
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_Spell03F_LODHDR.prefab",
+          "size_bytes": 64859
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_attack_hurt01",
+      "classification": "ImpactOrExplosion",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_attack_hurt01_LOD1.prefab",
+          "size_bytes": 99796
+        },
+        "LOD2": {
+          "file_name": "LianPo_attack_hurt01_LOD2.prefab",
+          "size_bytes": 69237
+        },
+        "LOD3": {
+          "file_name": "LianPo_attack_hurt01_LOD3.prefab",
+          "size_bytes": 45986
+        },
+        "LODHDR": {
+          "file_name": "LianPo_attack_hurt01_LODHDR.prefab",
+          "size_bytes": 99554
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_buff01",
+      "classification": "BuffAura",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_buff01_LOD1.prefab",
+          "size_bytes": 181971
+        },
+        "LOD2": {
+          "file_name": "LianPo_buff01_LOD2.prefab",
+          "size_bytes": 132021
+        },
+        "LOD3": {
+          "file_name": "LianPo_buff01_LOD3.prefab",
+          "size_bytes": 80566
+        },
+        "LODHDR": {
+          "file_name": "LianPo_buff01_LODHDR.prefab",
+          "size_bytes": 182522
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_buff02",
+      "classification": "BuffAura",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_buff02_LOD1.prefab",
+          "size_bytes": 181997
+        },
+        "LOD2": {
+          "file_name": "LianPo_buff02_LOD2.prefab",
+          "size_bytes": 132037
+        },
+        "LOD3": {
+          "file_name": "LianPo_buff02_LOD3.prefab",
+          "size_bytes": 80580
+        },
+        "LODHDR": {
+          "file_name": "LianPo_buff02_LODHDR.prefab",
+          "size_bytes": 182532
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_hurt_spell01",
+      "classification": "ImpactOrExplosion",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_hurt_spell01_LOD1.prefab",
+          "size_bytes": 116419
+        },
+        "LOD2": {
+          "file_name": "LianPo_hurt_spell01_LOD2.prefab",
+          "size_bytes": 70657
+        },
+        "LOD3": {
+          "file_name": "LianPo_hurt_spell01_LOD3.prefab",
+          "size_bytes": 46057
+        },
+        "LODHDR": {
+          "file_name": "LianPo_hurt_spell01_LODHDR.prefab",
+          "size_bytes": 116569
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_hurt_spell02",
+      "classification": "ImpactOrExplosion",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_hurt_spell02_LOD1.prefab",
+          "size_bytes": 112366
+        },
+        "LOD2": {
+          "file_name": "LianPo_hurt_spell02_LOD2.prefab",
+          "size_bytes": 68564
+        },
+        "LOD3": {
+          "file_name": "LianPo_hurt_spell02_LOD3.prefab",
+          "size_bytes": 47116
+        },
+        "LODHDR": {
+          "file_name": "LianPo_hurt_spell02_LODHDR.prefab",
+          "size_bytes": 112252
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_penshe_buff01",
+      "classification": "BuffAura",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_penshe_buff01_LOD1.prefab",
+          "size_bytes": 97279
+        },
+        "LOD2": {
+          "file_name": "LianPo_penshe_buff01_LOD2.prefab",
+          "size_bytes": 74237
+        },
+        "LOD3": {
+          "file_name": "LianPo_penshe_buff01_LOD3.prefab",
+          "size_bytes": 74238
+        },
+        "LODHDR": {
+          "file_name": "LianPo_penshe_buff01_LODHDR.prefab",
+          "size_bytes": 53183
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_penshe_buff01b",
+      "classification": "BuffAura",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_penshe_buff01b_LOD1.prefab",
+          "size_bytes": 3788
+        },
+        "LOD2": {
+          "file_name": "LianPo_penshe_buff01b_LOD2.prefab",
+          "size_bytes": 3788
+        },
+        "LOD3": {
+          "file_name": "LianPo_penshe_buff01b_LOD3.prefab",
+          "size_bytes": 5268
+        },
+        "LODHDR": {
+          "file_name": "LianPo_penshe_buff01b_LODHDR.prefab",
+          "size_bytes": 3924
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_penshe_buff01c",
+      "classification": "BuffAura",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_penshe_buff01c_LOD1.prefab",
+          "size_bytes": 3793
+        },
+        "LOD2": {
+          "file_name": "LianPo_penshe_buff01c_LOD2.prefab",
+          "size_bytes": 3793
+        },
+        "LOD3": {
+          "file_name": "LianPo_penshe_buff01c_LOD3.prefab",
+          "size_bytes": 5272
+        },
+        "LODHDR": {
+          "file_name": "LianPo_penshe_buff01c_LODHDR.prefab",
+          "size_bytes": 3929
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    },
+    {
+      "base_name": "LianPo_penshe_buff02",
+      "classification": "BuffAura",
+      "lods": {
+        "LOD1": {
+          "file_name": "LianPo_penshe_buff02_LOD1.prefab",
+          "size_bytes": 94347
+        },
+        "LOD2": {
+          "file_name": "LianPo_penshe_buff02_LOD2.prefab",
+          "size_bytes": 70993
+        },
+        "LOD3": {
+          "file_name": "LianPo_penshe_buff02_LOD3.prefab",
+          "size_bytes": 70993
+        },
+        "LODHDR": {
+          "file_name": "LianPo_penshe_buff02_LODHDR.prefab",
+          "size_bytes": 72603
+        }
+      },
+      "preferred_source_lod": "LOD1",
+      "lod_count": 4
+    }
+  ]
+}

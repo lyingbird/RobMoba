@@ -1,0 +1,34 @@
+﻿hero_id: 105
+hero_name: LianPo
+unity_root: E:\trunk\Project
+prefab_dir: Assets\CustomResources\Shared\Prefab_Skill_Effects\Hero_Skill_Effects\105_LianPo
+preferred_lod: LOD1
+ignore_skin_subfolders: true
+selection_rules:
+  include_patterns:
+    - LianPo_attack_Spell02A
+    - LianPo_attack_Spell02D
+    - LianPo_attack_Spell03A
+    - LianPo_attack_Spell03B
+    - LianPo_attack_Spell03C
+    - LianPo_attack_Spell03D
+    - LianPo_buff01
+    - LianPo_buff02
+  exclude_patterns:
+    - _LOD2
+    - _LOD3
+    - _LODHDR
+    - _E_
+roblox_targets:
+  LianPo_attack_Spell02A: lianpo_ring_outer
+  LianPo_attack_Spell02D: lianpo_slam_explosion
+  LianPo_attack_Spell03A: lianpo_charge_wave
+  LianPo_attack_Spell03B: lianpo_ring_mid
+  LianPo_attack_Spell03C: lianpo_ring_inner
+  LianPo_attack_Spell03D: lianpo_ground_crack
+  LianPo_buff01: lianpo_charge_aura
+  LianPo_buff02: super_armor_aura
+mapping_notes:
+  - Prefer broad readable silhouettes over dense layered particles.
+  - Collapse shader-heavy glow stacks into 1-2 Roblox emitters plus 1 beam or mesh ring if needed.
+  - Mobile budget should stay within low emitter counts and short lifetimes.
