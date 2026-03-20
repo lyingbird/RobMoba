@@ -1,4 +1,4 @@
-﻿--[[
+--[[
     VFXController.luau
     客户端特效调度器
 

@@ -1,16 +1,9 @@
 --[[
-    init.client.luau
-    客户端入口脚本
-    
-    初始化流程：
-    1. 获取 Remotes
-    2. 初始化 InputHandler（输入处理 + 技能指示器）
-    3. 初始化 SkillBarUI（技能栏）
-    4. 初始化 HealthBarUI（血条）
-    5. 初始化 CombatUI（战斗提示）
-    6. 初始化 VFXController（特效播放）
-    7. 初始化 HeroSelectUI（英雄选择）
-    8. 监听游戏状态变更
+    Client bootstrap.
+
+    The client keeps remotes as a hard requirement, but each feature module
+    is initialized behind a protected boundary so one failure does not blank
+    the entire mobile UI stack.
 ]]
 
 local Players = game:GetService("Players")
@@ -18,115 +11,141 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local localPlayer = Players.LocalPlayer
 
--- 等待 Shared 模块加载
 local shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(shared:WaitForChild("Remotes"))
 local GameConfig = require(shared:WaitForChild("GameConfig"))
 
--- 引用客户端模块（init.client.luau 编译为 Client 自身，子模块在 script 下）
-local CameraController = require(script:WaitForChild("CameraController"))
-local MovementController = require(script:WaitForChild("MovementController"))
-local InputHandler = require(script:WaitForChild("InputHandler"))
-local SkillBarUI = require(script:WaitForChild("SkillBarUI"))
-local HealthBarUI = require(script:WaitForChild("HealthBarUI"))
-local CombatUI = require(script:WaitForChild("CombatUI"))
-local VFXController = require(script:WaitForChild("VFXController"))
-local HeroSelectUI = require(script:WaitForChild("HeroSelectUI"))
+local modules = {}
+
+local ready = {
+    camera = false,
+    movement = false,
+    input = false,
+    skillBar = false,
+    healthBar = false,
+    combat = false,
+    vfx = false,
+    heroSelect = false,
+}
+
+local function safeRequire(label: string, childName: string)
+    local ok, result = pcall(function()
+        return require(script:WaitForChild(childName))
+    end)
+
+    if not ok then
+        warn(string.format("[Client] %s load failed: %s", label, tostring(result)))
+        return nil
+    end
+
+    return result
+end
+
+local function safeInit(label: string, callback, ...)
+    if type(callback) ~= "function" then
+        warn(string.format("[Client] %s init skipped: missing callback", label))
+        return false
+    end
+
+    local ok, err = pcall(callback, ...)
+    if not ok then
+        warn(string.format("[Client] %s init failed: %s", label, tostring(err)))
+        return false
+    end
+
+    return true
+end
 
 print("========================================")
-print("[Client] 客户端初始化开始...")
+print("[Client] bootstrap start")
 print("========================================")
 
--- 1. 获取 Remotes
 local ok, remotesOrError = pcall(Remotes.getRemotes)
 if not ok then
     error("[Client] Remote initialization failed: " .. tostring(remotesOrError))
 end
 
 local remotes = remotesOrError
-print("[Client] Remotes 获取完成")
+print("[Client] remotes ready")
 
--- 1.3. 初始化 CameraController（LOL 固定俯视角，必须在其他模块之前设置 Scriptable 摄像机）
-CameraController.init()
+modules.camera = safeRequire("CameraController", "CameraController")
+modules.movement = safeRequire("MovementController", "MovementController")
+modules.input = safeRequire("InputHandler", "InputHandler")
+modules.skillBar = safeRequire("SkillBarUI", "SkillBarUI")
+modules.healthBar = safeRequire("HealthBarUI", "HealthBarUI")
+modules.combat = safeRequire("CombatUI", "CombatUI")
+modules.vfx = safeRequire("VFXController", "VFXController")
+modules.heroSelect = safeRequire("HeroSelectUI", "HeroSelectUI")
 
--- 1.5. 初始化 MovementController（LOL风格鼠标移动，必须在 InputHandler 之前）
-MovementController.init()
+ready.camera = safeInit("CameraController", modules.camera and modules.camera.init)
+ready.movement = safeInit("MovementController", modules.movement and modules.movement.init)
+ready.input = safeInit("InputHandler", modules.input and modules.input.init, remotes)
+ready.skillBar = safeInit("SkillBarUI", modules.skillBar and modules.skillBar.init, remotes)
+ready.healthBar = safeInit("HealthBarUI", modules.healthBar and modules.healthBar.init, remotes)
+ready.combat = safeInit("CombatUI", modules.combat and modules.combat.init, remotes)
+ready.vfx = safeInit("VFXController", modules.vfx and modules.vfx.init, remotes)
+ready.heroSelect = safeInit("HeroSelectUI", modules.heroSelect and modules.heroSelect.init, remotes)
 
--- 2. 初始化 InputHandler
-InputHandler.init(remotes)
-
--- 3. 初始化 SkillBarUI
-SkillBarUI.init(remotes)
-
--- 4. 初始化 HealthBarUI
-HealthBarUI.init(remotes)
-
--- 5. 初始化 CombatUI
-CombatUI.init(remotes)
-
--- 6. 初始化 VFXController
-VFXController.init(remotes)
-
--- 7. 初始化 HeroSelectUI
-HeroSelectUI.init(remotes)
-
--- 8. 监听游戏状态变更
 if remotes.GameStateChanged then
     remotes.GameStateChanged.OnClientEvent:Connect(function(data)
-        if not data then return end
-        local state = data.state
-        
-        if state == GameConfig.Game.States.Waiting then
-            print("[Client] 等待其他玩家...")
-            
-        elseif state == GameConfig.Game.States.HeroSelect then
-            print("[Client] 英雄选择阶段")
-            HeroSelectUI.show()
-            
-        elseif state == GameConfig.Game.States.Countdown then
-            print("[Client] 游戏即将开始! 倒计时: " .. tostring(data.countdown or 5))
-            
-            HeroSelectUI.hide()
+        if not data then
+            return
+        end
 
+        local state = data.state
+
+        if state == GameConfig.Game.States.Waiting then
+            print("[Client] waiting for more players")
+        elseif state == GameConfig.Game.States.HeroSelect then
+            print("[Client] hero select")
+            if ready.heroSelect then
+                modules.heroSelect.show()
+            end
+        elseif state == GameConfig.Game.States.Countdown then
+            print("[Client] countdown:", tostring(data.countdown or 5))
+            if ready.heroSelect then
+                modules.heroSelect.hide()
+            end
         elseif state == GameConfig.Game.States.InProgress then
-            print("[Client] 游戏开始！英雄切换面板已就绪")
-            -- 测试模式：自动展开英雄选择面板
-            HeroSelectUI.hide()
-            
+            print("[Client] in progress")
+            if ready.heroSelect then
+                modules.heroSelect.hide()
+            end
         elseif state == GameConfig.Game.States.Ended then
-            print("[Client] 游戏结束! 获胜方: " .. tostring(data.winner or "?"))
-            HeroSelectUI.hide()
+            print("[Client] ended:", tostring(data.winner or "?"))
+            if ready.heroSelect then
+                modules.heroSelect.hide()
+            end
         end
     end)
 end
 
--- 9. 监听队伍分配
 if remotes.TeamAssigned then
     remotes.TeamAssigned.OnClientEvent:Connect(function(data)
-        if not data then return end
-        print("[Client] 已分配到 " .. tostring(data.teamId) .. " 队")
+        if not data then
+            return
+        end
+
+        print("[Client] assigned team:", tostring(data.teamId))
     end)
 end
 
--- 10. 监听镜头震动（通过 CameraController 实现，保持固定俯视角）
 if remotes.CameraShake then
     remotes.CameraShake.OnClientEvent:Connect(function(data)
-        if not data then return end
-        local intensity = data.intensity or 1
-        local duration = data.duration or 0.3
-        CameraController.shake(intensity, duration)
+        if not data or not ready.camera then
+            return
+        end
+
+        modules.camera.shake(data.intensity or 1, data.duration or 0.3)
     end)
 end
 
--- 11. 监听持续施法进度条（已由 CombatUI 内部处理）
-
--- 12. 监听持续施法被打断
 if remotes.ChannelInterrupt then
-    remotes.ChannelInterrupt.OnClientEvent:Connect(function(data)
-        print("[Client] 持续施法被打断!")
+    remotes.ChannelInterrupt.OnClientEvent:Connect(function()
+        print("[Client] channel interrupted")
     end)
 end
 
 print("========================================")
-print("[Client] 客户端初始化完成!")
+print("[Client] bootstrap complete for", localPlayer.Name)
 print("========================================")

@@ -1,4 +1,4 @@
-﻿--[[
+--[[
     VFXLibrary.luau
     特效模板库
 

@@ -26,6 +26,7 @@ local HeroTable = require(shared:WaitForChild("HeroTable"))
 
 local SkillIndicator = require(script.Parent:WaitForChild("SkillIndicator"))
 local MovementController = require(script.Parent:WaitForChild("MovementController"))
+local TouchInputGuard = require(script.Parent:WaitForChild("TouchInputGuard"))
 
 local SKILL_KEYS = {
     [Enum.KeyCode.Q] = "Q",
@@ -99,6 +100,17 @@ function InputHandler.init(remotesRef)
             end
 
             InputHandler._basicAttack()
+        end
+    end)
+
+    UserInputService.TouchTap:Connect(function(_touchPositions, gameProcessed)
+        if gameProcessed or TouchInputGuard.isConsumed() or not isAlive then
+            return
+        end
+
+        if pendingSkillKey then
+            MovementController.suppressTouchTap()
+            InputHandler._confirmCast(pendingSkillKey)
         end
     end)
 

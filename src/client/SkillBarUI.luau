@@ -12,15 +12,21 @@
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local SkillBarUI = {}
 
 local remotes = nil
 local localPlayer = Players.LocalPlayer
 local InputHandler = require(script.Parent:WaitForChild("InputHandler"))
+local MovementController = require(script.Parent:WaitForChild("MovementController"))
 
 -- UI 引用
 local screenGui = nil
+local skillBarContainer = nil
+local skillBarScale = nil
 local skillSlots = {} -- { [key] = { frame, cooldownOverlay, cdLabel, ... } }
 
 -- 技能数据
@@ -40,6 +46,8 @@ local SLOT_SPACING = 10
 local KEYS = { "Q", "W", "E", "R" }
 local HITBOX_PADDING_Y = 6
 local HITBOX_EXTRA_HEIGHT = 14
+local TOUCH_HITBOX_EXTRA_WIDTH = 24
+local TOUCH_HITBOX_EXTRA_HEIGHT = 24
 
 -- 技能类型颜色
 local TYPE_COLORS = {
@@ -70,6 +78,7 @@ function SkillBarUI.init(remotesRef)
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SkillBarUI"
     screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
     
@@ -77,14 +86,26 @@ function SkillBarUI.init(remotesRef)
     local container = Instance.new("Frame")
     container.Name = "SkillBar"
     container.Size = UDim2.new(0, (SLOT_SIZE + SLOT_SPACING) * 4 - SLOT_SPACING, 0, SLOT_SIZE + 30)
-    container.Position = UDim2.new(0.5, 0, 1, -25)
     container.AnchorPoint = Vector2.new(0.5, 1)
     container.BackgroundTransparency = 1
     container.Parent = screenGui
+    skillBarContainer = container
+
+    skillBarScale = Instance.new("UIScale")
+    skillBarScale.Scale = 1
+    skillBarScale.Parent = container
     
     -- 创建 4 个技能槽
     for i, key in ipairs(KEYS) do
         SkillBarUI._createSlot(container, key, i)
+    end
+
+    SkillBarUI._applyResponsiveLayout()
+    local camera = Workspace.CurrentCamera
+    if camera then
+        camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+            SkillBarUI._applyResponsiveLayout()
+        end)
     end
     
     -- 监听冷却更新
@@ -120,6 +141,33 @@ function SkillBarUI.init(remotesRef)
     end)
     
     print("[SkillBarUI] 初始化完成")
+end
+
+function SkillBarUI._applyResponsiveLayout()
+    if not skillBarContainer then return end
+
+    local viewportSize = Vector2.new(1280, 720)
+    local camera = Workspace.CurrentCamera
+    if camera then
+        viewportSize = camera.ViewportSize
+    end
+
+    local bottomInset = 0
+    local ok, _topLeftInset, bottomRightInset = pcall(GuiService.GetGuiInset, GuiService)
+    if ok then
+        bottomInset = bottomRightInset.Y
+    end
+
+    local bottomPadding = UserInputService.TouchEnabled and 34 or 20
+    skillBarContainer.Position = UDim2.new(0.5, 0, 1, -(bottomPadding + bottomInset))
+
+    if skillBarScale then
+        local scale = math.clamp(viewportSize.X / 1280, 0.78, 1)
+        if UserInputService.TouchEnabled then
+            scale = math.clamp(viewportSize.X / 960, 0.9, 1)
+        end
+        skillBarScale.Scale = scale
+    end
 end
 
 --============================================================
@@ -241,10 +289,23 @@ function SkillBarUI._createSlot(parent, key, index)
     keyLabel.Parent = parent
 
     -- Transparent forgiving hit area that also covers the nearby gap and key label.
+    local extraTouchWidth = UserInputService.TouchEnabled and TOUCH_HITBOX_EXTRA_WIDTH or 0
+    local extraTouchHeight = UserInputService.TouchEnabled and TOUCH_HITBOX_EXTRA_HEIGHT or 0
+
     local hitArea = Instance.new("TextButton")
     hitArea.Name = "HitArea_" .. key
-    hitArea.Size = UDim2.new(0, SLOT_SIZE + SLOT_SPACING, 0, SLOT_SIZE + 20 + HITBOX_EXTRA_HEIGHT)
-    hitArea.Position = UDim2.new(0, x - (SLOT_SPACING / 2), 0, -HITBOX_PADDING_Y)
+    hitArea.Size = UDim2.new(
+        0,
+        SLOT_SIZE + SLOT_SPACING + extraTouchWidth,
+        0,
+        SLOT_SIZE + 20 + HITBOX_EXTRA_HEIGHT + extraTouchHeight
+    )
+    hitArea.Position = UDim2.new(
+        0,
+        x - (SLOT_SPACING / 2) - (extraTouchWidth / 2),
+        0,
+        -HITBOX_PADDING_Y - (extraTouchHeight / 2)
+    )
     hitArea.BackgroundTransparency = 1
     hitArea.BorderSizePixel = 0
     hitArea.AutoButtonColor = false
@@ -253,6 +314,7 @@ function SkillBarUI._createSlot(parent, key, index)
     hitArea.Parent = parent
 
     hitArea.Activated:Connect(function()
+        MovementController.suppressTouchTap()
         InputHandler.triggerSkillKey(key)
     end)
     

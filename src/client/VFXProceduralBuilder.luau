@@ -1,4 +1,4 @@
-﻿local TweenService = game:GetService("TweenService")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local shared = ReplicatedStorage:WaitForChild("Shared")

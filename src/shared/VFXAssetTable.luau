@@ -1,4 +1,4 @@
-﻿--[[
+--[[
     VFXAssetTable.luau
 
     Field semantics:
