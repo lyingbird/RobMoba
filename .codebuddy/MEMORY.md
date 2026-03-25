@@ -115,3 +115,57 @@
 | 006 | 技能框架升级(Archetype) | ✅ |
 | 007 | 英雄量产能力(Passive+Energy+UI) | ✅ |
 | 008 | 王者→Roblox移植系统 | 🔄 进行中 |
+| 013 | 移动端大厅→训练场流程 | ✅ |
+| 014 | 移动端MOBA技能交互系统(UI布局+指示器+状态机) | ✅ |
+| 015 | 技能交互系统重构(15模块+初始化器+服务端桥接) | ✅ 功能完整 |
+
+## REQ-015: 新技能交互系统 (基于21份设计文档)
+
+### 新增文件清单 (16个模块)
+
+**共享层 (src/ReplicatedStorage/SkillSystem/)**:
+| 文件 | 内容 |
+|------|------|
+| `Enums/SkillEnums.lua` | 7组枚举: RangeType/SlotType/IndicatorLayer/IndicatorResType/ControllerState/CancelMode/映射表 |
+| `Types/SkillTypes.lua` | 类型注释 |
+| `Config/GlobalConfig.lua` | 全局常量: 缓冲/防误触/拖拽/指示器阈值 |
+| `Config/IndicatorConfig.lua` | 7种指示器预设(1001-1007) |
+| `Config/SkillConfigAdapter.lua` | 适配层: Skills/*.lua → 新格式(rangeType/slotType/indicatorCfgId) |
+
+**客户端层 (src/StarterPlayer/StarterPlayerScripts/Modules/SkillSystem/)**:
+| 文件 | 内容 |
+|------|------|
+| `InputAdapter.lua` | 触摸/鼠标输入封装(单手指追踪) |
+| `IndicatorRenderer.lua` | Part对象池+7种形状创建 |
+| `SkillIndicator.lua` | 三层指示器(Guide/Effect/Fixed)+Lerp插值 |
+| `CancelAreaDetector.lua` | 双取消模式(AreaCancel+DistanceCancel)+震动反馈 |
+| `SkillController.lua` | 核心状态机(Idle→Pressing→Dragging)+4种目标选择+防误触 |
+| `SkillCacheManager.lua` | 技能缓冲队列+普攻缓冲+连续普攻窗口+受控保护 |
+| `CommonAttackController.lua` | 普攻控制器+索敌+缓冲协调 |
+| `SkillButtonManager.lua` | UI按钮绑定→事件分发+取消UI刷新+CD管理 |
+| `SkillSystemInit.lua` | 一站式初始化: 组装全部模块+创建UI+连接Remote+服务端桥接 |
+
+**服务端**: `ServerModules/SkillValidator.lua` + `RemoteEventInit +1 SkillCastFinishedEvent`
+
+### 服务端桥接协议
+- 新系统 param 表: `{ slotType, skillId, rangeType, targetPosition, targetDirection, targetActorId }`
+- 旧服务端协议: `CastSkillEvent:FireServer(key, targetPos)` (key=字符串, targetPos=Vector3)
+- 转换逻辑在 `SkillSystemInit` 中重写 `SkillCacheManager._FireSkill`
+- slotType→key 映射: `{1="Q", 2="W", 3="R", 4="D", 5="F"}`
+- Directional 型: targetPos = charPos + dir * 50 (将方向转为远点)
+
+### Client.client.lua 集成
+- `initMobileCombatUI` 中 `SkillSystemInit.Init(mobileFrame, heroId)` 替代旧 UI_SkillButtons
+- MobileInputManager 保留(仅摇杆移动), skillButtons=nil
+- 旧模块(UI_SkillButtons/SkillIndicatorManager/MobileConfig瞄准参数)保留未删除,可后续清理
+
+### P2 功能补全 (2026-03-24)
+- **CC控制联动**: SkillSystemInit ⑮ 中 `_bindCCListeners(char)` 监听 Humanoid 的 `CanCastSkill`/`CanAutoAttack` 属性变化
+  - CanCastSkill=false → 禁用 slotType 1~5 (Q/W/R/D/F) + SkillCacheManager.SetCanCast(false)
+  - CanAutoAttack=false → 禁用 slotType 0 (普攻)
+  - 死亡 → 全禁用; 重生(CharacterAdded) → 全恢复 + 重新绑定
+- **CD冷却UI**: createSkillButton 新增 CDOverlay (Frame + TextLabel), Heartbeat ⑯ 每3帧刷新
+  - 冷却中: 黑色半透明遮罩 + 白色倒计时(≥1秒显示整数, <1秒显示1位小数)
+  - 冷却结束: 自动隐藏
+- **按钮按压动画**: SkillButtonManager 中 `_AnimateButtonPress`/`_AnimateButtonRelease`
+  - 按下: Quad Out 0.08s → 缩至85%; 抬起: Back Out 0.12s → 恢复原大小(带弹性)

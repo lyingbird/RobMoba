@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -305,11 +306,11 @@ local function createMiniPanel()
 	miniPanelGui.ResetOnSpawn = false
 	miniPanelGui.Parent = playerGui
 
-	-- 小面板容器
+	-- 小面板容器(右上角, 避免与左下角摇杆重叠)
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
 	panel.Size = UDim2.new(0, 160, 0, 50)
-	panel.Position = UDim2.new(0, 10, 1, -130)
+	panel.Position = UDim2.new(1, -170, 0, 60)
 	panel.BackgroundColor3 = Color3.fromRGB(20, 24, 36)
 	panel.BackgroundTransparency = 0.15
 	panel.BorderSizePixel = 0
@@ -369,6 +370,58 @@ local function createMiniPanel()
 	switchBtn.MouseButton1Click:Connect(function()
 		if not isShowing then
 			UI_HeroSelect.Show(9999)
+		end
+	end)
+
+	-- ========== 拖拽功能 (鼠标 + 触摸) ==========
+	local dragging = false
+	local dragStart = nil  -- Vector3: input.Position at drag start
+	local panelStartPos = nil  -- UDim2: panel.Position at drag start
+	local dragMoved = false  -- 区分拖拽和点击
+
+	panel.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragMoved = false
+			dragStart = input.Position
+			panelStartPos = panel.Position
+		end
+	end)
+
+	panel.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if not dragging then return end
+		if input.UserInputType ~= Enum.UserInputType.MouseMovement
+			and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		if not dragStart or not panelStartPos then return end
+
+		local delta = input.Position - dragStart
+		-- 超过 4px 才算拖拽（区分点击和拖拽）
+		if math.abs(delta.X) > 4 or math.abs(delta.Y) > 4 then
+			dragMoved = true
+		end
+		if dragMoved then
+			panel.Position = UDim2.new(
+				panelStartPos.X.Scale, panelStartPos.X.Offset + delta.X,
+				panelStartPos.Y.Scale, panelStartPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+
+	-- 全局 InputEnded 兜底：防止 panel 外松手导致拖拽卡住
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
 		end
 	end)
 

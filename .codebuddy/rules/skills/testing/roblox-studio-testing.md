@@ -1,7 +1,11 @@
 ---
-# 注意不要修改本文头文件，如修改，CodeBuddy（内网版）将按照默认逻辑设置
-type: manual
+description: 
+alwaysApply: false
+enabled: false
+updatedAt: 2026-03-25T02:32:12.626Z
+provider: 
 ---
+
 # 技能：Roblox Studio 测试方法
 
 > **领域**: testing

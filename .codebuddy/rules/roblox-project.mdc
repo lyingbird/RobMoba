@@ -1,0 +1,87 @@
+---
+description:
+alwaysApply: true
+enabled: true
+updatedAt: 2026-03-20T16:30:00.000Z
+provider:
+---
+
+# Roblox + Rojo + Luau 项目规则
+
+## 项目结构
+```text
+src/
+├── client/   -> StarterPlayer.StarterPlayerScripts.Client
+│   └── init.client.luau
+├── server/   -> ServerScriptService.Server
+│   └── init.server.luau
+└── shared/   -> ReplicatedStorage.Shared
+```
+
+## 当前产品目标
+
+### 核心流程
+1. 玩家进入游戏后先到大厅。
+2. 大厅提供两个入口：`PVP匹配` 和 `单人训练`。
+3. 选择 `单人训练` 后进入英雄选择界面。
+4. 玩家选择并锁定英雄后，以该英雄进入训练场。
+5. 只有真正进入训练场或 PVP 战斗后，战斗 HUD 才显示。
+
+### 移动端规则
+- 移动端使用 Roblox 默认虚拟摇杆。
+- 不要再实现或恢复“点地移动”作为移动端主交互。
+- 移动端 UI 设计必须为安全区留出空间，避免压住 `TouchGui`。
+
+### 大厅与 HUD 规则
+- 大厅阶段只显示大厅 UI，不显示技能栏、血蓝条、战斗提示。
+- 英雄选择阶段显示选人 UI，不显示战斗 HUD。
+- 战斗 HUD 只在 `InProgress` 阶段显示。
+
+## 绝对禁止的错误
+
+### 1. Rojo `init` 文件引用路径
+在 `init.client.luau` 和 `init.server.luau` 中引用同级模块时：
+- 用 `require(script:WaitForChild("ModuleName"))`
+- 不要用 `require(script.Parent:WaitForChild("ModuleName"))`
+
+### 2. Shared 模块引用
+- 用 `game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("XXX")`
+- 不要用 `ReplicatedStorage:WaitForChild("src"):WaitForChild("shared")`
+
+### 3. 不要在多个模块里重复定义职责
+- 英雄属性设置：只在 `HeroManager`
+- 技能释放逻辑：只在 `SkillSystem`
+- 大厅/模式切换：只在 `GameManager`
+- Remote 创建与获取：只在 `shared/Remotes.luau`
+
+### 4. 不要把业务修复补回 Studio
+- Studio 只作为运行和验证环境。
+- 业务逻辑、UI、Remote、状态机都必须回到仓库代码中修改。
+
+## 编码规范
+
+### Luau 模块结构
+```lua
+local Players = game:GetService("Players")
+
+local MyModule = {}
+
+-- locals
+-- public functions
+-- private helpers
+
+return MyModule
+```
+
+### 错误处理
+- `WaitForChild` 优先带超时参数。
+- 客户端可选模块初始化使用保护边界，避免单模块失败导致整条启动链路中断。
+- Remote 缺失属于硬错误，应该尽早报出。
+
+### 交互契约
+- 新增 Remote 时，必须同步更新 `src/shared/Remotes.luau`。
+- 新增游戏状态时，必须同步更新：
+  - `src/shared/GameConfig.luau`
+  - `src/server/GameManager.luau`
+  - `src/client/init.client.luau`
+

@@ -2,7 +2,7 @@
 description: 当用户使用 /agent 命令或要求使用 agent 流水线处理需求时，激活此规则。
 alwaysApply: false
 enabled: true
-updatedAt: 2026-03-13T08:00:57.821Z
+updatedAt: 2026-03-23T03:10:22.567Z
 provider: 
 ---
 

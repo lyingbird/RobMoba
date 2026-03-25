@@ -1,7 +1,11 @@
 ---
-# 注意不要修改本文头文件，如修改，CodeBuddy（内网版）将按照默认逻辑设置
-type: manual
+description: 
+alwaysApply: false
+enabled: false
+updatedAt: 2026-03-25T02:32:15.294Z
+provider: 
 ---
+
 # 技能：Roblox UI 模式
 
 > **领域**: roblox

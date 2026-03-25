@@ -13,6 +13,7 @@ task.wait(0.5)
 local MatchmakingEvent = ReplicatedStorage:WaitForChild("MatchmakingEvent", 10)
 local HeroSwapEvent = ReplicatedStorage:WaitForChild("HeroSwapEvent", 10)
 local DuelEvent = ReplicatedStorage:WaitForChild("DuelEvent", 10)
+local ModeSelectEvent = ReplicatedStorage:WaitForChild("ModeSelectEvent", 10)
 
 -- 英雄配置
 local HeroRegistry = require(ReplicatedStorage:WaitForChild("HeroRegistry"))
@@ -23,9 +24,13 @@ local PassiveSystem = require(ServerScriptService.ServerModules:WaitForChild("Pa
 local EnergySystem = require(ServerScriptService.ServerModules:WaitForChild("EnergySystem"))
 
 -- ========== 数据结构 ==========
-local playerStates = {}  -- { [Player] = "LOBBY" | "MATCHING" | "DUELING" }
+local playerStates = {}  -- { [Player] = "LOBBY" | "MATCHING" | "DUELING" | "TRAINING" }
 local playerHeroes = {}  -- { [Player] = heroId | nil }
+local playerModes = {}   -- { [Player] = "Training" | "PVP" | nil }
 local matchQueue = {}    -- { Player, Player, ... } 有序数组
+
+-- ========== 训练场参数 ==========
+local TRAINING_SPAWN = Vector3.new(-197, 62.5, 204) -- 复用 TrainingManager 出生点
 
 -- ========== 匹配区域参数 ==========
 local ZONE_RADIUS = 15
@@ -193,6 +198,97 @@ if HeroSwapEvent then
 	end)
 end
 
+-- ========== 模式选择 (REQ-013: 移动端流程) ==========
+local modeSelectLastTime = {} -- rate limit
+
+local function enterTraining(player)
+	-- 状态验证: 必须在 LOBBY
+	if playerStates[player] ~= "LOBBY" then
+		ModeSelectEvent:FireClient(player, {
+			success = false,
+			message = "当前状态无法进入训练场",
+		})
+		return
+	end
+
+	-- 必须已选英雄
+	if not playerHeroes[player] then
+		ModeSelectEvent:FireClient(player, {
+			success = false,
+			message = "请先选择英雄",
+		})
+		return
+	end
+
+	-- Rate limit (0.2s)
+	local now = os.clock()
+	local last = modeSelectLastTime[player] or 0
+	if now - last < 0.2 then return end
+	modeSelectLastTime[player] = now
+
+	-- 更新状态
+	playerStates[player] = "TRAINING"
+	playerModes[player] = "Training"
+
+	-- 传送到训练场
+	local character = player.Character
+	if character then
+		local humanoid = character:FindFirstChild("Humanoid")
+		local rootPart = character:FindFirstChild("HumanoidRootPart")
+		if rootPart and humanoid then
+			-- 传送前：切换到 Physics 状态防止动画/物理冲突
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			-- 使用带朝向的 CFrame，Y 轴抬高 3 studs 防止嵌入地形
+			local spawnCF = CFrame.new(TRAINING_SPAWN + Vector3.new(0, 3, 0))
+			character:PivotTo(spawnCF)
+			-- 清除残留速度
+			rootPart.AssemblyLinearVelocity = Vector3.zero
+			rootPart.AssemblyAngularVelocity = Vector3.zero
+		end
+	end
+
+	-- 通知客户端
+	ModeSelectEvent:FireClient(player, {
+		success = true,
+		mode = "Training",
+	})
+
+	print(("[LobbyManager] %s entered Training mode with hero %s"):format(player.Name, tostring(playerHeroes[player])))
+end
+
+local function returnToLobby(player)
+	if playerStates[player] ~= "TRAINING" then return end
+
+	playerStates[player] = "LOBBY"
+	playerModes[player] = nil
+
+	-- 重置训练场状态
+	if shared.TrainingManager then
+		shared.TrainingManager.ResetTrainingState(player)
+	end
+
+	ModeSelectEvent:FireClient(player, {
+		success = true,
+		mode = "Lobby",
+	})
+
+	print(("[LobbyManager] %s returned to lobby"):format(player.Name))
+end
+
+if ModeSelectEvent then
+	ModeSelectEvent.OnServerEvent:Connect(function(player, data)
+		if not data or not data.mode then return end
+
+		if data.mode == "Training" then
+			enterTraining(player)
+		elseif data.mode == "PVP" then
+			joinMatchmaking(player)
+		elseif data.mode == "ReturnLobby" then
+			returnToLobby(player)
+		end
+	end)
+end
+
 -- ========== 玩家加入/离开 ==========
 local function onPlayerAdded(player)
 	playerStates[player] = "LOBBY"
@@ -218,6 +314,8 @@ local function onPlayerRemoving(player)
 
 	playerStates[player] = nil
 	playerHeroes[player] = nil
+	playerModes[player] = nil
+	modeSelectLastTime[player] = nil
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -305,6 +403,10 @@ end
 
 function LobbyAPI.SetPlayerState(player, state)
 	playerStates[player] = state
+end
+
+function LobbyAPI.GetPlayerMode(player)
+	return playerModes[player]
 end
 
 shared.LobbyManager = LobbyAPI

@@ -1,7 +1,11 @@
 ---
-# 注意不要修改本文头文件，如修改，CodeBuddy（内网版）将按照默认逻辑设置
-type: manual
+description: 
+alwaysApply: false
+enabled: false
+updatedAt: 2026-03-25T02:31:33.974Z
+provider: 
 ---
+
 # 策划 Agent 职能规范（主策划）
 
 > 版本: v4.0

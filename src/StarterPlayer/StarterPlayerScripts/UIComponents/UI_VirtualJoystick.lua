@@ -3,8 +3,12 @@
 	虚拟摇杆系统 (MOD-01)
 	REQ-011: 手机端MOBA UI与操控系统
 
-	左半屏触摸 → 在触摸点显示摇杆(外圈+摇杆球) → 拖拽输出方向向量 → 松手淡出
-	支持: 死区、钳位、速度分级、多点触控独立追踪
+	王者荣耀风格:
+	- 大圆底盘固定在左下角，始终可见（半透明深色）
+	- 小圆拖拽球居中，始终可见（亮色高光）
+	- 触摸左半屏 → 摇杆球跟随手指偏移（被钳位在底盘内）
+	- 松手 → 球弹回中心（Back缓动）
+	- 底盘有微妙的边缘渐变，球有内发光效果
 ]]
 
 local TweenService = game:GetService("TweenService")
@@ -14,123 +18,69 @@ local UI_VirtualJoystick = {}
 
 -- 内部状态
 local touchFrame: Frame? = nil          -- 左半屏触摸捕获层
-local outerRing: ImageLabel? = nil       -- 外圈
-local innerBall: ImageLabel? = nil       -- 摇杆球
+local outerRing: Frame? = nil           -- 外圈底盘
+local innerBall: Frame? = nil           -- 摇杆球
 local activeTouchId = nil                -- 当前激活的触摸点ID
-local centerPosition = Vector2.zero      -- 摇杆中心位置(绝对像素)
+local fixedCenter = Vector2.zero         -- 底盘中心(绝对屏幕坐标, 运行时计算)
+local maxRadiusPx = 0                    -- 底盘半径(像素, 运行时计算)
 local currentDirection = Vector2.zero    -- 当前方向(归一化)
 local currentMagnitude = 0               -- 当前力度(0~1)
-local enabled = true                     -- 是否启用
-local directionCallback = nil            -- 方向变更回调
-local fadeTween = nil                    -- 淡出Tween引用
+local enabled = true
+local directionCallback = nil
 
 -- ═══════════════════════════════════════
 -- 辅助函数
 -- ═══════════════════════════════════════
 
--- REQ-012: 判断输入是否为有效的触摸/鼠标输入
 local function isValidPointerInput(input: InputObject): boolean
 	if input.UserInputType == Enum.UserInputType.Touch then return true end
 	if MobileConfig.DEBUG_FORCE_MOBILE and input.UserInputType == Enum.UserInputType.MouseButton1 then return true end
 	return false
 end
 
--- 创建圆形ImageLabel
-local function createCircle(name: string, parent: GuiObject, sizeScale: number, alpha: number): ImageLabel
-	local circle = Instance.new("ImageLabel")
-	circle.Name = name
-	circle.BackgroundColor3 = Color3.new(1, 1, 1)
-	circle.BackgroundTransparency = 1 - alpha
-	circle.BorderSizePixel = 0
-	circle.Image = "rbxassetid://7072706620" -- 圆形白色图片 (Roblox 内置)
-	circle.ImageTransparency = 1 - alpha
-	circle.AnchorPoint = Vector2.new(0.5, 0.5)
-	circle.Visible = false
-	circle.ZIndex = 10
-
-	-- 使用 UICorner 确保圆形
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.5, 0)
-	corner.Parent = circle
-
-	circle.Parent = parent
-	return circle
-end
-
--- 设置摇杆UI可见性(带动画)
-local function setJoystickVisible(visible: boolean, instant: boolean?)
-	if not outerRing or not innerBall then return end
-
-	if fadeTween then
-		fadeTween:Cancel()
-		fadeTween = nil
-	end
-
-	if visible then
-		outerRing.Visible = true
-		innerBall.Visible = true
-		if instant then
-			outerRing.ImageTransparency = 1 - MobileConfig.JOYSTICK_OUTER_ALPHA
-			innerBall.ImageTransparency = 1 - MobileConfig.JOYSTICK_INNER_ALPHA
-		else
-			outerRing.ImageTransparency = 1
-			innerBall.ImageTransparency = 1
-			local tweenInfo = TweenInfo.new(MobileConfig.JOYSTICK_APPEAR_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-			TweenService:Create(outerRing, tweenInfo, { ImageTransparency = 1 - MobileConfig.JOYSTICK_OUTER_ALPHA }):Play()
-			TweenService:Create(innerBall, tweenInfo, { ImageTransparency = 1 - MobileConfig.JOYSTICK_INNER_ALPHA }):Play()
-		end
-	else
-		local tweenInfo = TweenInfo.new(MobileConfig.JOYSTICK_FADE_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-		local tween = TweenService:Create(outerRing, tweenInfo, { ImageTransparency = 1 })
-		TweenService:Create(innerBall, tweenInfo, { ImageTransparency = 1 }):Play()
-		tween:Play()
-		fadeTween = tween
-		tween.Completed:Connect(function()
-			if fadeTween == tween then
-				outerRing.Visible = false
-				innerBall.Visible = false
-				fadeTween = nil
-			end
-		end)
-	end
-end
-
--- 通知方向变更
 local function notifyDirectionChanged()
 	if directionCallback then
 		directionCallback(currentDirection, currentMagnitude)
 	end
 end
 
+-- 计算底盘中心的绝对屏幕坐标
+local function recalcCenter()
+	if not outerRing then return end
+	local absPos = outerRing.AbsolutePosition
+	local absSize = outerRing.AbsoluteSize
+	fixedCenter = Vector2.new(absPos.X + absSize.X / 2, absPos.Y + absSize.Y / 2)
+	maxRadiusPx = absSize.X / 2
+end
+
+-- 设置摇杆球在底盘内的位置(像素偏移)
+local function setBallOffset(offsetX: number, offsetY: number)
+	if not innerBall then return end
+	-- innerBall 的 AnchorPoint=0.5, Position 相对于 outerRing
+	-- outerRing 的中心 = (0.5, 0.5) in outerRing space
+	innerBall.Position = UDim2.new(0.5, offsetX, 0.5, offsetY)
+end
+
+-- 摇杆球弹回中心
+local function resetBallToCenter()
+	if not innerBall then return end
+	local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	TweenService:Create(innerBall, tweenInfo, {
+		Position = UDim2.new(0.5, 0, 0.5, 0)
+	}):Play()
+end
+
 -- ═══════════════════════════════════════
--- 触摸事件处理
+-- 触摸事件
 -- ═══════════════════════════════════════
 
 local function onTouchBegan(input: InputObject)
 	if not enabled then return end
-	if activeTouchId then return end -- 已有激活的触摸点, 忽略
-
-	-- 只处理触摸输入(REQ-012: 调试模式下也接受鼠标)
+	if activeTouchId then return end
 	if not isValidPointerInput(input) then return end
 
 	activeTouchId = input
-	local pos = input.Position
-	centerPosition = Vector2.new(pos.X, pos.Y)
-
-	-- 计算摇杆UI的屏幕像素尺寸
-	local viewportSize = touchFrame.AbsoluteSize
-	local outerDiameterPx = viewportSize.Y * MobileConfig.JOYSTICK_OUTER_SIZE * 2 -- 左半屏的Y就是屏幕高度
-	local innerDiameterPx = viewportSize.Y * MobileConfig.JOYSTICK_INNER_SIZE * 2
-
-	-- 定位摇杆到触摸点(绝对像素)
-	outerRing.Size = UDim2.fromOffset(outerDiameterPx, outerDiameterPx)
-	outerRing.Position = UDim2.fromOffset(pos.X - touchFrame.AbsolutePosition.X, pos.Y - touchFrame.AbsolutePosition.Y)
-
-	innerBall.Size = UDim2.fromOffset(innerDiameterPx, innerDiameterPx)
-	innerBall.Position = outerRing.Position
-
-	-- 显示摇杆
-	setJoystickVisible(true, false)
+	recalcCenter() -- 确保中心坐标最新
 
 	-- 初始方向为零
 	currentDirection = Vector2.zero
@@ -140,35 +90,26 @@ end
 
 local function onTouchMoved(input: InputObject)
 	if not enabled then return end
-	-- REQ-012: 鼠标模式下 InputChanged 收到的是 MouseMovement 类型,
-	-- 与 InputBegan 的 MouseButton1 input 对象不同, 需要特殊处理
 	if input ~= activeTouchId then
 		if not (MobileConfig.DEBUG_FORCE_MOBILE and activeTouchId and input.UserInputType == Enum.UserInputType.MouseMovement) then
 			return
 		end
 	end
 
-	local pos = input.Position
-	local touchPos = Vector2.new(pos.X, pos.Y)
-	local offset = touchPos - centerPosition
+	local touchPos = Vector2.new(input.Position.X, input.Position.Y)
+	local offset = touchPos - fixedCenter
 	local distance = offset.Magnitude
-	local maxRadius = MobileConfig.JOYSTICK_MAX_RADIUS
-	local deadzoneRadius = maxRadius * MobileConfig.JOYSTICK_DEADZONE
+	local deadzoneRadius = maxRadiusPx * MobileConfig.JOYSTICK_DEADZONE
 
-	-- 钳位: 摇杆球不超出外圈
-	if distance > maxRadius then
-		offset = offset.Unit * maxRadius
-		distance = maxRadius
+	-- 钳位: 摇杆球不超出底盘
+	local clampedOffset = offset
+	if distance > maxRadiusPx then
+		clampedOffset = offset.Unit * maxRadiusPx
+		distance = maxRadiusPx
 	end
 
 	-- 更新摇杆球位置
-	if innerBall then
-		local basePos = outerRing.Position
-		innerBall.Position = UDim2.fromOffset(
-			basePos.X.Offset + offset.X,
-			basePos.Y.Offset + offset.Y
-		)
-	end
+	setBallOffset(clampedOffset.X, clampedOffset.Y)
 
 	-- 死区判断
 	if distance < deadzoneRadius then
@@ -176,15 +117,13 @@ local function onTouchMoved(input: InputObject)
 		currentMagnitude = 0
 	else
 		currentDirection = offset.Unit
-		-- 力度映射: 0(死区边缘) ~ 1(最大半径)
-		currentMagnitude = math.clamp((distance - deadzoneRadius) / (maxRadius - deadzoneRadius), 0, 1)
+		currentMagnitude = math.clamp((distance - deadzoneRadius) / (maxRadiusPx - deadzoneRadius), 0, 1)
 	end
 
 	notifyDirectionChanged()
 end
 
 local function onTouchEnded(input: InputObject)
-	-- REQ-012: 鼠标模式下 InputEnded 的 MouseButton1 input 也要能释放
 	if input ~= activeTouchId then
 		if not (MobileConfig.DEBUG_FORCE_MOBILE and activeTouchId and input.UserInputType == Enum.UserInputType.MouseButton1) then
 			return
@@ -196,77 +135,137 @@ local function onTouchEnded(input: InputObject)
 	currentMagnitude = 0
 	notifyDirectionChanged()
 
-	-- 淡出摇杆
-	setJoystickVisible(false, false)
+	resetBallToCenter()
 end
 
 -- ═══════════════════════════════════════
 -- 公共接口
 -- ═══════════════════════════════════════
 
---- 初始化摇杆系统
---- @param parentFrame Frame - 挂载父容器(ScreenGui)
 function UI_VirtualJoystick.Init(parentFrame: Frame)
-	-- 创建左半屏触摸捕获层
+	-- 左半屏触摸捕获层(透明)
 	touchFrame = Instance.new("Frame")
 	touchFrame.Name = "JoystickTouchArea"
-	touchFrame.Size = UDim2.new(0.5, 0, 1, 0)         -- 左半屏
+	touchFrame.Size = UDim2.new(0.5, 0, 1, 0)
 	touchFrame.Position = UDim2.new(0, 0, 0, 0)
-	touchFrame.AnchorPoint = Vector2.new(0, 0)
-	touchFrame.BackgroundTransparency = 1               -- 完全透明
-	touchFrame.ZIndex = 10
+	touchFrame.BackgroundTransparency = 1
+	touchFrame.ZIndex = 5
 	touchFrame.Parent = parentFrame
 
-	-- 创建外圈
-	outerRing = createCircle("JoystickOuter", touchFrame, MobileConfig.JOYSTICK_OUTER_SIZE, MobileConfig.JOYSTICK_OUTER_ALPHA)
+	-- ═══════════════════════════════════
+	-- 外圈底盘: 大圆, 固定左下角, 始终可见
+	-- 使用 SizeConstraint.RelativeYY + 正确的 X/Y Scale
+	-- ═══════════════════════════════════
+	local outerDiameter = MobileConfig.JOYSTICK_OUTER_SIZE * 2  -- 如 0.25*2 = 0.5 屏高
 
-	-- 创建摇杆球
-	innerBall = createCircle("JoystickInner", touchFrame, MobileConfig.JOYSTICK_INNER_SIZE, MobileConfig.JOYSTICK_INNER_ALPHA)
-	innerBall.ZIndex = 11
+	outerRing = Instance.new("Frame")
+	outerRing.Name = "JoystickOuter"
+	outerRing.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- 左下角位置: X=35% of touchFrame宽, Y=73% 屏高
+	-- 确保底部不超出屏幕: 73% + 25%(半径) = 98%, 留2%安全边距
+	outerRing.Position = UDim2.new(0.35, 0, 0.73, 0)
+	-- 关键: X和Y的Scale都要设置! SizeConstraint.RelativeYY 下两者都参照父Y
+	outerRing.Size = UDim2.new(outerDiameter, 0, outerDiameter, 0)
+	outerRing.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	outerRing.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
+	outerRing.BackgroundTransparency = 0.35
+	outerRing.BorderSizePixel = 0
+	outerRing.Visible = true
+	outerRing.ZIndex = 10
+	outerRing.Parent = touchFrame
 
-	-- 绑定触摸事件(使用GuiObject事件, 独立于其他UI元素)
+	-- 外圈圆角(变成圆形)
+	local outerCorner = Instance.new("UICorner")
+	outerCorner.CornerRadius = UDim.new(0.5, 0)
+	outerCorner.Parent = outerRing
+
+	-- 外圈边框(微妙的灰色描边)
+	local outerStroke = Instance.new("UIStroke")
+	outerStroke.Color = Color3.fromRGB(80, 90, 110)
+	outerStroke.Thickness = 2
+	outerStroke.Transparency = 0.4
+	outerStroke.Parent = outerRing
+
+	-- ═══════════════════════════════════
+	-- 摇杆球: 小圆, 居中, 始终可见
+	-- ═══════════════════════════════════
+	local innerDiameter = MobileConfig.JOYSTICK_INNER_SIZE * 2  -- 如 0.10*2 = 0.2 屏高
+
+	innerBall = Instance.new("Frame")
+	innerBall.Name = "JoystickInner"
+	innerBall.AnchorPoint = Vector2.new(0.5, 0.5)
+	innerBall.Position = UDim2.new(0.5, 0, 0.5, 0)  -- 相对于 outerRing 的中心
+	innerBall.Size = UDim2.new(innerDiameter / outerDiameter, 0, innerDiameter / outerDiameter, 0)
+	-- innerBall 的 Size 是相对于 outerRing 的比例
+	innerBall.BackgroundColor3 = Color3.fromRGB(160, 180, 210)
+	innerBall.BackgroundTransparency = 0.05
+	innerBall.BorderSizePixel = 0
+	innerBall.Visible = true
+	innerBall.ZIndex = 12
+	innerBall.Parent = outerRing  -- 作为底盘的子元素
+
+	-- 摇杆球圆角
+	local innerCorner = Instance.new("UICorner")
+	innerCorner.CornerRadius = UDim.new(0.5, 0)
+	innerCorner.Parent = innerBall
+
+	-- 摇杆球边框(亮色高光)
+	local innerStroke = Instance.new("UIStroke")
+	innerStroke.Color = Color3.fromRGB(200, 220, 255)
+	innerStroke.Thickness = 2
+	innerStroke.Transparency = 0.15
+	innerStroke.Parent = innerBall
+
+	-- 摇杆球内部高光点(模拟凸面镜效果)
+	local highlight = Instance.new("Frame")
+	highlight.Name = "Highlight"
+	highlight.AnchorPoint = Vector2.new(0.5, 0.5)
+	highlight.Position = UDim2.new(0.4, 0, 0.35, 0)  -- 左上偏移，模拟光照
+	highlight.Size = UDim2.new(0.3, 0, 0.3, 0)
+	highlight.BackgroundColor3 = Color3.fromRGB(230, 240, 255)
+	highlight.BackgroundTransparency = 0.5
+	highlight.BorderSizePixel = 0
+	highlight.ZIndex = 13
+	highlight.Parent = innerBall
+
+	local hlCorner = Instance.new("UICorner")
+	hlCorner.CornerRadius = UDim.new(0.5, 0)
+	hlCorner.Parent = highlight
+
+	-- 绑定触摸事件
 	touchFrame.InputBegan:Connect(onTouchBegan)
 	touchFrame.InputChanged:Connect(onTouchMoved)
 	touchFrame.InputEnded:Connect(onTouchEnded)
 end
 
---- 获取当前方向(归一化的2D向量)
 function UI_VirtualJoystick.GetDirection(): Vector2
 	return currentDirection
 end
 
---- 获取当前力度(0~1)
 function UI_VirtualJoystick.GetMagnitude(): number
 	return currentMagnitude
 end
 
---- 启用/禁用摇杆
 function UI_VirtualJoystick.SetEnabled(isEnabled: boolean)
 	enabled = isEnabled
 	if not enabled then
-		-- 禁用时停止当前输入
 		if activeTouchId then
 			activeTouchId = nil
 			currentDirection = Vector2.zero
 			currentMagnitude = 0
 			notifyDirectionChanged()
-			setJoystickVisible(false, true)
+			resetBallToCenter()
 		end
 	end
+	if outerRing then outerRing.Visible = true end
+	if innerBall then innerBall.Visible = true end
 end
 
---- 注册方向变更回调
---- @param callback (direction: Vector2, magnitude: number) -> ()
 function UI_VirtualJoystick.OnDirectionChanged(callback)
 	directionCallback = callback
 end
 
---- 销毁清理
 function UI_VirtualJoystick.Destroy()
-	if fadeTween then
-		fadeTween:Cancel()
-		fadeTween = nil
-	end
 	if touchFrame then
 		touchFrame:Destroy()
 		touchFrame = nil

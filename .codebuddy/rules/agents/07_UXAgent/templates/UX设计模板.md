@@ -1,7 +1,11 @@
 ---
-# 注意不要修改本文头文件，如修改，CodeBuddy（内网版）将按照默认逻辑设置
-type: manual
+description: 
+alwaysApply: false
+enabled: false
+updatedAt: 2026-03-25T02:31:51.425Z
+provider: 
 ---
+
 # UX设计文档模板
 
 > 使用说明：复制此模板到 `.GameDev/{功能名称}/02_UX设计.md`，填写具体内容

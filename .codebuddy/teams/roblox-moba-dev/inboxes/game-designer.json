@@ -1,0 +1,20 @@
+[
+  {
+    "id": "msg-1773120718880-uw1a97",
+    "from": "pm-auditor",
+    "to": "game-designer",
+    "type": "message",
+    "content": "收到你的技能数据审查结果，感谢！我已经完成了代码层面的全面审计。你发现的几个问题和我的审计有交叉：\n\n**与我的审计重叠的部分：**\n- 安琪拉被动伤害 — 我在代码审计中也发现灼烧 DoT 逻辑完全未实现（AddMark 只叠加层数，没有每秒伤害代码）\n- 安琪拉被动移速加成 — 确认代码中也缺失此机制\n\n**你发现的新问题（我的审计未覆盖数值层面）：**\n- 后羿Q的CD和蓝耗数值不正确\n- 廉颇Q的CD数值不正确\n- 安琪拉Q蓝耗不正确\n- 廉颇强化普攻减Q CD机制缺失\n- 廉颇脱战回血机制缺失\n\n这些数值修正属于 SkillTable.luau 的改动，应该是相对低风险的。而机制缺失（减CD、脱战回血）需要代码新增，优先级需要和 programmer 协调。\n\n我会把这些整合到给 team-lead 的最终任务列表中。",
+    "timestamp": "2026-03-10T05:31:58.880Z",
+    "read": true
+  },
+  {
+    "id": "shutdown-1773120791825",
+    "from": "team-lead",
+    "to": "game-designer",
+    "type": "shutdown_request",
+    "content": "{\"type\":\"shutdown_request\",\"request_id\":\"shutdown-1773120791825\",\"reason\":\"数据审查完成，感谢。准备关闭。\",\"from\":\"team-lead\",\"timestamp\":\"2026-03-10T05:33:11.825Z\"}",
+    "timestamp": "2026-03-10T05:33:11.825Z",
+    "read": true
+  }
+]

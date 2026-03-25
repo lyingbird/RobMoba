@@ -1,0 +1,70 @@
+---
+description: 
+alwaysApply: true
+enabled: true
+updatedAt: 2026-03-10T04:51:03.115Z
+provider: 
+---
+
+# 已知陷阱 — 过去犯过的错误及正确做法
+
+本文档记录项目开发过程中遇到过的实际 Bug 和陷阱。每次修改代码前必须检查是否会触发这些已知问题。
+
+## 🔴 P0 — 曾导致功能完全不工作
+
+### 陷阱 1: Rojo init 文件的 script.Parent 陷阱
+- **错误**: `script.Parent:WaitForChild("InputHandler")`
+- **正确**: `script:WaitForChild("InputHandler")`
+- **影响**: 所有模块加载失败，客户端/服务端完全瘫痪
+- **记住**: init.*.luau 在 Rojo 中编译为目录对应的 Script 自身
+
+### 陷阱 2: PlayerModule 覆盖 DevComputerMovementMode
+- **错误**: 只设 `DevComputerMovementMode = Scriptable` 就以为 WASD 被禁了
+- **正确**: 三重保障 — json属性 + ContextActionService Sink + PlayerModule Disable
+- **影响**: 玩家仍然可以 WASD 移动
+
+### 陷阱 3: ContextActionService Sink 吞掉技能键
+- **错误**: 用 ContextActionService Sink 掉 W/A/S/D 所有键来禁移动
+- **正确**: 只 Sink A/S/D，W 键由 InputHandler 的 ContextActionService 绑定处理
+- **影响**: W 技能无法使用
+
+### 陷阱 4: VFXTemplateTable 多余闭合括号
+- **错误**: 表定义中间出现多余的 `}`，导致后续 30+ 模板在 table 外部
+- **正确**: 确保整个 table 只有一对 `{}`，所有模板条目在内部
+- **影响**: 大量特效走 fallback，视觉效果全错
+
+## 🟡 P1 — 曾导致功能部分异常
+
+### 陷阱 5: HeroManager 与 SkillSystem 职责重复
+- **错误**: 两个模块都监听 HeroSelect、都设置英雄属性、都做蓝量回复
+- **正确**: HeroManager 独占英雄生命周期管理，SkillSystem 只管技能释放
+- **影响**: 属性设置冲突、蓝量双倍回复
+
+### 陷阱 6: FindFirstChild 做必要前提条件
+- **错误**: `if not FindFirstChild("X") then return end` — 可能只是还没加载
+- **正确**: `WaitForChild("X", timeout)` 等待加载，超时后 warn 并 fallback
+- **影响**: 时序问题导致功能随机失效
+
+### 陷阱 7: 友军伤害未过滤
+- **错误**: 只用 `filterSelf` 过滤施法者，队友照样被技能命中
+- **正确**: 基于 Team 对象判断友军/敌方，假人始终可攻击
+- **影响**: 技能伤害友军
+
+### 陷阱 8: 安琪拉技能与王者荣耀不符
+- **教训**: 实现英雄技能前必须先确认技能机制原型，不要凭印象编写
+- **正确流程**: 查看 plan.md 中的技能配置表 → 确认 skillType/effects/参数 → 再编写代码
+
+## 🟢 P2 — 代码质量/可维护性
+
+### 陷阱 9: 共享模块路径硬编码
+- **错误**: 在模块内硬编码 `ReplicatedStorage:WaitForChild("src"):WaitForChild("shared")`
+- **正确**: 遵循 Rojo 映射，路径是 `ReplicatedStorage.Shared.ModuleName`
+
+### 陷阱 10: 缺少 fallback 和错误日志
+- **错误**: pcall 失败后静默忽略
+- **正确**: pcall 失败后 `warn("[ModuleName] 描述: " .. tostring(err))`
+
+## 如何使用本文档
+1. 编写新代码时，扫描一遍相关陷阱
+2. 做代码审查时，逐条检查是否有类似模式
+3. 发现新陷阱时，立即追加到此文档（通过 MEMORY.md 或更新此规则）

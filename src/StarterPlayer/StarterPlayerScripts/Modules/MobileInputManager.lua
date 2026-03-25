@@ -39,12 +39,14 @@ local AttackTargetEvent = nil
 -- ═══════════════════════════════════════
 
 --- 2D屏幕方向 → 3D世界方向
---- 固定摄像机朝-Z: 摇杆X→世界X, 摇杆Y→世界-Z(屏幕Y正朝下, 世界-Z是前方)
+--- 摄像机位于角色后上方(+Z), 朝角色看: 屏幕上→世界-Z, 屏幕右→世界+X
+--- 摇杆 offset.Y 在屏幕中: 上推<0, 下推>0 (屏幕Y轴正方向朝下)
+--- 因此 worldZ = screenDir.Y (上推: Y<0 → Z<0 即-Z ✓)
 local function screenToWorldDirection(screenDir: Vector2): Vector3
 	if screenDir.Magnitude < 0.01 then
 		return Vector3.zero
 	end
-	return Vector3.new(screenDir.X, 0, -screenDir.Y).Unit
+	return Vector3.new(screenDir.X, 0, screenDir.Y).Unit
 end
 
 --- 获取最近敌人(客户端侧简化版)
@@ -185,6 +187,43 @@ function MobileInputManager.Init(char: Model, mods: table)
 	if humanoid then
 		humanoid.Died:Connect(function()
 			MobileInputManager.SetEnabled(false)
+			-- 死亡时设置所有技能按钮为 Dead 状态(灰色+不可点击)
+			if skillButtons and skillButtons.SetSkillState then
+				for _, key in ipairs({"Q", "W", "R"}) do
+					skillButtons.SetSkillState(key, "Dead")
+				end
+			end
+		end)
+
+		-- CC系统属性监听: 服务端 EffectExecutor 设置 CanCastSkill/CanAutoAttack Attribute
+		-- 当被控(眩晕/沉默等)时禁用技能按钮, 解控后恢复
+		humanoid:GetAttributeChangedSignal("CanCastSkill"):Connect(function()
+			local canCast = humanoid:GetAttribute("CanCastSkill")
+			if skillButtons and skillButtons.SetSkillState then
+				if canCast == false then
+					-- 被控: 所有技能按钮 → Disabled
+					for _, key in ipairs({"Q", "W", "R"}) do
+						skillButtons.SetSkillState(key, "Disabled")
+					end
+				else
+					-- 解控: 所有技能按钮 → Idle (CD模块会再刷新为Cooldown如果还在CD中)
+					for _, key in ipairs({"Q", "W", "R"}) do
+						skillButtons.SetSkillState(key, "Idle")
+					end
+				end
+			end
+		end)
+
+		humanoid:GetAttributeChangedSignal("CanAutoAttack"):Connect(function()
+			local canAttack = humanoid:GetAttribute("CanAutoAttack")
+			if skillButtons and skillButtons.SetSkillState then
+				if canAttack == false then
+					-- 缴械: 普攻按钮 → Disabled
+					skillButtons.SetSkillState("Attack", "Disabled")
+				else
+					skillButtons.SetSkillState("Attack", "Idle")
+				end
+			end
 		end)
 	end
 

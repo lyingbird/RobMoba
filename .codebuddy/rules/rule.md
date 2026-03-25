@@ -1,6 +1,7 @@
 ---
 # 注意不要修改本文头文件，如修改，CodeBuddy（内网版）将按照默认逻辑设置
-type: always
+type: manual
+enabled: false
 ---
 
 # Roblox MOBA 游戏开发流水线工作流（主规则）

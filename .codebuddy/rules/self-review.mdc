@@ -1,0 +1,68 @@
+---
+description: 
+alwaysApply: true
+enabled: false
+updatedAt: 2026-03-25T02:31:32.223Z
+provider: 
+---
+
+# 代码自检清单 — 每次修改后必须执行
+
+## 触发条件
+当完成任何代码修改（新建文件、修改函数、重构模块）后，在回复用户之前，必须执行以下自检流程。
+
+## 第一步：Lint 检查
+- 对每个修改过的文件执行 `read_lints` 
+- 如果有错误，立即修复后重新检查
+- 只有零错误才能继续
+
+## 第二步：引用完整性
+对修改的每个文件检查：
+
+### 路径检查
+- [ ] init.client.luau / init.server.luau 中是否使用了 `script:WaitForChild()` 而非 `script.Parent`？
+- [ ] 共享模块引用路径是否为 `ReplicatedStorage.Shared.XXX`？
+- [ ] 新增的 require 路径在 Rojo 编译后是否正确？
+
+### 依赖检查
+- [ ] 新增的 `game:GetService()` 调用是否在文件顶部声明？
+- [ ] 引用的其他模块是否真实存在于项目中？
+- [ ] 如果新增了模块，init 文件是否已添加 require 和初始化调用？
+
+### 接口检查
+- [ ] 如果修改了模块的公开接口（函数签名、返回值），所有调用方是否已同步更新？
+- [ ] 如果新增了 RemoteEvent，`Remotes.luau` 是否已同步更新？
+- [ ] 如果修改了数据表结构（SkillTable/HeroTable等），所有读取该表的模块是否兼容？
+
+## 第三步：逻辑一致性
+
+### 按键系统
+- [ ] 新增按键绑定是否与现有 ContextActionService 绑定冲突？
+- [ ] W 键是否仍由 InputHandler 独占处理？
+
+### 初始化顺序
+- [ ] 新模块是否需要在 init.client/server.luau 中初始化？
+- [ ] 初始化顺序是否正确（依赖模块先初始化）？
+
+### 状态管理
+- [ ] 是否存在两个模块管理同一状态的情况（如 HeroManager vs SkillSystem）？
+- [ ] 新增的状态变量是否在角色死亡/重生时正确重置？
+
+## 第四步：回归检查
+- 用 `search_content` 搜索修改涉及的关键函数/变量名，确认没有遗漏的调用方
+- 如果修改了通信协议（RemoteEvent 参数），搜索所有 FireClient/FireServer/OnClientEvent/OnServerEvent 确认一致
+
+## 第五步：报告
+在回复用户时，附加一个简短的自检摘要：
+```
+✅ 自检通过
+- Lint: 0 错误
+- 引用: X 个文件已验证
+- 接口: 无破坏性变更 / 已同步 Y 处调用方
+```
+
+如果发现并修复了问题：
+```
+⚠️ 自检发现问题并已修复
+- [描述发现的问题和修复方式]
+```

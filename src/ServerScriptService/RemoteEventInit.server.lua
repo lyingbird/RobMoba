@@ -43,6 +43,12 @@ local REMOTE_EVENTS = {
 	"TrainingEvent",
 	"TrainingSyncEvent",
 
+	-- 大厅模式选择 (REQ-013: 移动端流程)
+	"ModeSelectEvent",
+
+	-- 新技能系统 (REQ-014: 技能交互重构)
+	"SkillCastFinishedEvent",  -- 服务端→客户端: 技能释放完毕通知(缓冲区出队)
+
 	-- 注意: 以下由 GameManager / MatchSystem 自己创建，这里也确保存在
 	-- "GameStateEvent",
 	-- "BattleStartEvent",

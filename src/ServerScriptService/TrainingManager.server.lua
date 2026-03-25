@@ -93,9 +93,9 @@ local function toggleCD(player, enabled)
 	state.noCooldown = enabled == true
 	state.noCost = enabled == true
 
-	-- 开启时: 通知客户端所有技能CD=0
-	if state.noCooldown and SyncCooldownEvent then
-		-- 发送一个特殊标记让客户端重置所有CD显示
+	-- 开启或关闭时: 都通知客户端重置所有技能CD状态
+	-- 关闭时同样需要发送，让客户端清除可能卡住的 _casting 锁
+	if SyncCooldownEvent then
 		SyncCooldownEvent:FireClient(player, "ALL", 0, 0)
 	end
 

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "msg-1773120675269-82f2e4",
+    "from": "team-lead",
+    "to": "programmer",
+    "type": "message",
+    "content": "PM 审计报告已出，以下是关键发现，供你参考：\n\n## ✅ 好消息 — 已确认正确\n1. 所有 18 个 event type handler 都已注册且参数处理正确\n2. StatusEffectManager 所有必需方法（isControlled, getMarkStacks, clearMarks, addMark）都存在\n3. EventScheduler.isCasting() 已存在\n4. HeroId StringValue 在 HeroManager 中正确设置\n5. BasicAttack Remote 在服务端/客户端都已正确连接\n6. 所有接口调用链无断裂\n\n## ⚠️ 需要你关注的问题\nPM 发现了几个核心机制缺失，但这些是**较大的新功能开发**，不是简单修复。你当前的任务先集中在：\n1. 确认你审查的代码问题是否都已修复\n2. 更新 MEMORY.md 和日志\n3. 完成后汇报给我\n\n以下大功能将在后续迭代中安排：\n- 安琪拉灼烧 DoT 逻辑\n- 后羿攻速叠加逻辑  \n- 廉颇战意系统\n- 后羿 Q 多重箭矢效果\n- RotateActor 客户端实现",
+    "timestamp": "2026-03-10T05:31:15.269Z",
+    "read": true
+  },
+  {
+    "id": "msg-1773120712765-fwqovk",
+    "from": "team-lead",
+    "to": "programmer",
+    "type": "message",
+    "content": "策划审查报告已出，发现 **5 处数值错误** 需要你在 SkillTable.luau 中修正：\n\n## 🔴 必须修正的数值（SkillTable.luau）\n\n### 1. 后羿Q（houyi_q）— CD 应随等级递减\n- **当前**：`cooldown = 10`（固定）\n- **修正为**：`cooldown = 10`（保持基础值），但 `levelData` 中每级 CD 应为 `{10, 9.6, 9.2, 8.8, 8.4, 8}`\n\n### 2. 后羿Q（houyi_q）— 蓝耗错误\n- **当前**：`manaCost = 60`\n- **修正为**：`manaCost = 50`\n\n### 3. 廉颇Q（lianpo_q）— CD 应随等级递减\n- **当前**：`cooldown = 9`（固定）\n- **修正为**：`cooldown = 9`（保持基础值），但 `levelData` 中每级 CD 应为 `{9, 8.4, 7.8, 7.2, 6.6, 6}`\n\n### 4. 安琪拉被动（angela_passive）— 每层基础伤害错误\n- **当前**：`damagePerStack = 11`（在 SkillEventTable.luau 的 angela_passive.burnParams 中）\n- **修正为**：`damagePerStack = 8`\n\n### 5. 安琪拉Q（angela_q）— 蓝耗错误\n- **当前**：`manaCost = 40`\n- **修正为**：`manaCost = 50`\n\n## 修改文件清单\n1. `d:/工作/Roblox联动/roblox_vibecoding/src/shared/SkillTable.luau` — 修正 houyi_q 蓝耗和CD、lianpo_q CD\n2. `d:/工作/Roblox联动/roblox_vibecoding/src/shared/SkillEventTable.luau` — 修正 angela_passive.burnParams.damagePerStack\n\n请修复后用 read_lints 确认无错误，然后汇报给我。",
+    "timestamp": "2026-03-10T05:31:52.765Z",
+    "read": true
+  },
+  {
+    "id": "shutdown-1773120792614",
+    "from": "team-lead",
+    "to": "programmer",
+    "type": "shutdown_request",
+    "content": "{\"type\":\"shutdown_request\",\"request_id\":\"shutdown-1773120792614\",\"reason\":\"代码审查和数值修正完成，感谢。准备关闭。\",\"from\":\"team-lead\",\"timestamp\":\"2026-03-10T05:33:12.614Z\"}",
+    "timestamp": "2026-03-10T05:33:12.614Z",
+    "read": true
+  },
+  {
+    "id": "shutdown-1773120805626",
+    "from": "team-lead",
+    "to": "programmer",
+    "type": "shutdown_request",
+    "content": "{\"type\":\"shutdown_request\",\"request_id\":\"shutdown-1773120805626\",\"reason\":\"所有工作已完成，请确认关闭。\",\"from\":\"team-lead\",\"timestamp\":\"2026-03-10T05:33:25.626Z\"}",
+    "timestamp": "2026-03-10T05:33:25.626Z",
+    "read": false
+  }
+]

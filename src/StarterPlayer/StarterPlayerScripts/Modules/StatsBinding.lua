@@ -143,4 +143,83 @@ function StatsBinding.Init(hud)
 	player.CharacterAdded:Connect(onCharacterAdded)
 end
 
+-- REQ-014: 移动端属性绑定(绑定到 MobileHUD 而非 PC HUD)
+local mobileHUDRef = nil
+local mobileConnections = {}
+
+local function clearMobileConnections()
+	for _, conn in ipairs(mobileConnections) do
+		conn:Disconnect()
+	end
+	mobileConnections = {}
+end
+
+local function bindMobileCharacter(character)
+	clearMobileConnections()
+	if not mobileHUDRef then return end
+
+	-- 等待属性就绪
+	while character:GetAttribute("HP") == nil do
+		character:GetAttributeChangedSignal("HP"):Wait()
+	end
+
+	-- 初始更新
+	local hp = character:GetAttribute("HP") or 0
+	local maxHP = character:GetAttribute("MaxHP") or 1
+	mobileHUDRef.UpdateHP(hp, maxHP)
+
+	local mp = character:GetAttribute("MP") or 0
+	local maxMP = character:GetAttribute("MaxMP") or 1
+	mobileHUDRef.UpdateMP(mp, maxMP)
+
+	local level = character:GetAttribute("Level") or 1
+	mobileHUDRef.UpdateLevel(level)
+
+	-- HP 绑定
+	table.insert(mobileConnections, character:GetAttributeChangedSignal("HP"):Connect(function()
+		local h = character:GetAttribute("HP") or 0
+		local mh = character:GetAttribute("MaxHP") or 1
+		mobileHUDRef.UpdateHP(h, mh)
+	end))
+	table.insert(mobileConnections, character:GetAttributeChangedSignal("MaxHP"):Connect(function()
+		local h = character:GetAttribute("HP") or 0
+		local mh = character:GetAttribute("MaxHP") or 1
+		mobileHUDRef.UpdateHP(h, mh)
+	end))
+
+	-- MP 绑定
+	table.insert(mobileConnections, character:GetAttributeChangedSignal("MP"):Connect(function()
+		local m = character:GetAttribute("MP") or 0
+		local mm = character:GetAttribute("MaxMP") or 1
+		mobileHUDRef.UpdateMP(m, mm)
+	end))
+	table.insert(mobileConnections, character:GetAttributeChangedSignal("MaxMP"):Connect(function()
+		local m = character:GetAttribute("MP") or 0
+		local mm = character:GetAttribute("MaxMP") or 1
+		mobileHUDRef.UpdateMP(m, mm)
+	end))
+
+	-- Level 绑定
+	table.insert(mobileConnections, character:GetAttributeChangedSignal("Level"):Connect(function()
+		local lv = character:GetAttribute("Level") or 1
+		mobileHUDRef.UpdateLevel(lv)
+	end))
+end
+
+function StatsBinding.InitMobile(mobileHUD)
+	clearConnections()       -- 清理PC端绑定(如果有)
+	clearMobileConnections() -- 清理旧的移动端绑定
+	mobileHUDRef = mobileHUD
+
+	local function onMobileCharacterAdded(character)
+		character:WaitForChild("Humanoid")
+		task.defer(bindMobileCharacter, character)
+	end
+
+	if player.Character then
+		onMobileCharacterAdded(player.Character)
+	end
+	table.insert(mobileConnections, player.CharacterAdded:Connect(onMobileCharacterAdded))
+end
+
 return StatsBinding

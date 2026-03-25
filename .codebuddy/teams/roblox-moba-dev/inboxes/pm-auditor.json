@@ -1,0 +1,29 @@
+[
+  {
+    "id": "msg-1773120702738-g8heih",
+    "from": "game-designer",
+    "to": "pm-auditor",
+    "type": "message",
+    "content": "FYI — 我已完成三英雄技能数据审查。关键发现：5处数值需修正（后羿Q的CD和蓝耗、廉颇Q的CD、安琪拉被动伤害和Q蓝耗），3处缺失机制（廉颇强化普攻减Q CD、安琪拉被动移速加成、廉颇脱战回血）。核心机制实现整体正确。详细报告已发给team-lead。",
+    "timestamp": "2026-03-10T05:31:42.738Z",
+    "read": true
+  },
+  {
+    "id": "msg-1773120733331-gopmvj",
+    "from": "game-designer",
+    "to": "pm-auditor",
+    "type": "message",
+    "content": "感谢确认和整合！几点补充：\n\n1. **数值修正（低风险）**：后羿Q CD/蓝耗、廉颇Q CD、安琪拉Q蓝耗这些确实只改 SkillTable.luau 的数字，风险很低，可以优先让 programmer 处理。\n\n2. **机制缺失（需新增代码）**：\n   - **安琪拉被动灼烧 DoT** — 这个影响最大，因为安琪拉的核心输出循环依赖被动叠烧。建议优先级最高。\n   - **安琪拉被动移速加成** — 相对次要，但对操作手感有影响。\n   - **廉颇强化普攻减Q CD** — 这是廉颇连招核心（Q-A-Q-A循环），缺了这个廉颇手感会很僵硬。建议优先级较高。\n   - **廉颇脱战回血** — 属于生存能力，优先级可以稍低。\n\n3. **建议给 programmer 的优先顺序**：\n   - P0: 数值修正（SkillTable 改数字）+ 安琪拉被动灼烧 DoT\n   - P1: 廉颇强化普攻减Q CD\n   - P2: 安琪拉被动移速加成 + 廉颇脱战回血\n\n你整合任务列表时可以参考这个优先级建议。",
+    "timestamp": "2026-03-10T05:32:13.331Z",
+    "read": true
+  },
+  {
+    "id": "shutdown-1773120790871",
+    "from": "team-lead",
+    "to": "pm-auditor",
+    "type": "shutdown_request",
+    "content": "{\"type\":\"shutdown_request\",\"request_id\":\"shutdown-1773120790871\",\"reason\":\"审计工作完成，感谢。准备关闭。\",\"from\":\"team-lead\",\"timestamp\":\"2026-03-10T05:33:10.871Z\"}",
+    "timestamp": "2026-03-10T05:33:10.871Z",
+    "read": true
+  }
+]

@@ -6,8 +6,13 @@
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
+
+-- 移动端检测: 引用 MobileConfig 的 DEBUG_FORCE_MOBILE 开关
+local MobileConfig = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("MobileConfig"))
+local isMobile = MobileConfig.DEBUG_FORCE_MOBILE or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
 
 local TrainingEvent = ReplicatedStorage:WaitForChild("TrainingEvent", 10)
 local TrainingSyncEvent = ReplicatedStorage:WaitForChild("TrainingSyncEvent", 10)
@@ -32,7 +37,7 @@ local COLORS = {
 }
 
 -- ========== 状态 ==========
-local panelExpanded = true
+local panelExpanded = not isMobile  -- 移动端默认收起，PC端默认展开
 local cdEnabled = false
 local dummyCount = 0
 local currentLevel = 1
@@ -413,6 +418,12 @@ local function createPanel()
 	end)
 
 	updateToggleVisual()
+
+	-- 移动端: 面板默认收起，只显示折叠图标
+	if isMobile then
+		panelFrame.Visible = false
+		collapsedIcon.Visible = true
+	end
 end
 
 -- ========== 服务端状态同步 ==========
@@ -451,11 +462,17 @@ local function onSyncState(data)
 		if screenGui then
 			screenGui.Enabled = panelVisible
 		end
-		-- 隐藏时重置折叠状态
+		-- 隐藏时重置折叠状态（移动端保持收起，PC端恢复展开）
 		if not panelVisible then
-			panelExpanded = true
-			if panelFrame then panelFrame.Visible = true end
-			if collapsedIcon then collapsedIcon.Visible = false end
+			if isMobile then
+				panelExpanded = false
+				if panelFrame then panelFrame.Visible = false end
+				if collapsedIcon then collapsedIcon.Visible = true end
+			else
+				panelExpanded = true
+				if panelFrame then panelFrame.Visible = true end
+				if collapsedIcon then collapsedIcon.Visible = false end
+			end
 		end
 	end
 end
