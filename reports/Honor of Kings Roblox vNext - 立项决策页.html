@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Honor of Kings Roblox vNext · 完整产品一期立项决策</title>
+  <style>
+    :root {
+      --ink: #18232d;
+      --muted: #5b6773;
+      --paper: #f7f9fb;
+      --white: #ffffff;
+      --line: #dce5eb;
+      --line-strong: #c2d1da;
+      --teal: #087b78;
+      --blue: #385f7d;
+      --green: #397747;
+      --amber: #9a6a14;
+      --red: #a94738;
+      --dark: #142029;
+      --soft: #eef4f6;
+      --soft-teal: #e5f3f1;
+      --soft-amber: #fff5df;
+      --soft-blue: #eaf2f8;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      line-height: 1.68;
+      letter-spacing: 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      background: var(--dark);
+      color: #eef5f7;
+      padding: 28px 22px;
+    }
+
+    .brand {
+      padding-bottom: 22px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.16);
+    }
+
+    .brand small {
+      display: block;
+      color: rgba(255,255,255,0.62);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    nav a {
+      display: block;
+      color: rgba(255,255,255,0.86);
+      font-size: 14px;
+      padding: 8px 0;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    nav a:hover { color: #ffffff; }
+
+    .side-note {
+      margin-top: 24px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.76);
+      font-size: 12px;
+    }
+
+    main { min-width: 0; }
+
+    .hero {
+      padding: 58px clamp(24px, 5vw, 72px) 46px;
+      background:
+        linear-gradient(135deg, rgba(8,123,120,0.12), rgba(56,95,125,0.12)),
+        var(--white);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--soft-teal);
+      color: var(--teal);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 1000px;
+      font-size: clamp(32px, 4.6vw, 54px);
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 1000px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 34px;
+      max-width: 1120px;
+    }
+
+    .metric {
+      padding: 18px;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 26px;
+      line-height: 1.12;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .metric span {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    section {
+      padding: 42px clamp(24px, 5vw, 72px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-inner { max-width: 1120px; }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--teal);
+      margin-bottom: 6px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 29px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    p { margin: 0 0 14px; color: var(--muted); }
+
+    .summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .panel {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+
+    .panel.strong {
+      border-color: rgba(8,123,120,0.36);
+      background: linear-gradient(180deg, #ffffff, #f0f8f7);
+    }
+
+    .panel h3 { margin-top: 0; }
+
+    .decision {
+      font-size: 22px;
+      line-height: 1.42;
+      color: var(--ink);
+      font-weight: 800;
+      margin: 0 0 12px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag.teal { background: var(--soft-teal); color: var(--teal); }
+    .tag.amber { background: var(--soft-amber); color: var(--amber); }
+    .tag.blue { background: var(--soft-blue); color: var(--blue); }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .card h3 { margin-top: 0; margin-bottom: 8px; }
+    .card p:last-child { margin-bottom: 0; }
+
+    /* 三段主线柱 */
+    .pillars {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .pillar {
+      position: relative;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--teal);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .pillar .num {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--teal);
+      letter-spacing: 1px;
+    }
+
+    .pillar h3 { margin: 6px 0 8px; }
+    .pillar p { margin-bottom: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0 8px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: table;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th { background: #edf3f6; color: var(--ink); font-weight: 800; }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { font-weight: 800; color: var(--ink); width: 210px; }
+
+    .callout {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--teal);
+      background: var(--soft-teal);
+      border-radius: 8px;
+    }
+
+    .callout p { color: var(--ink); margin-bottom: 0; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0 8px;
+    }
+
+    .flow-step {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 132px;
+    }
+
+    .flow-step b { display: block; color: var(--teal); font-size: 13px; margin-bottom: 8px; }
+    .flow-step strong { display: block; font-size: 16px; line-height: 1.35; margin-bottom: 6px; }
+    .flow-step span { color: var(--muted); font-size: 13px; }
+
+    .timeline { display: grid; gap: 12px; margin-top: 18px; }
+
+    .time-row {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 18px;
+    }
+
+    .time-row b { color: var(--teal); }
+    .time-row p { margin: 0; }
+
+    .list {
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .list li { position: relative; padding-left: 18px; color: var(--muted); }
+
+    .list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 11px;
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--teal);
+    }
+
+    .owner-filter {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .owner-filter .card { min-height: 150px; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      background: var(--soft);
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .badge.green { background: #e8f3ea; color: var(--green); }
+    .badge.amber { background: var(--soft-amber); color: var(--amber); }
+    .badge.red { background: #fae9e5; color: var(--red); }
+    .badge.teal { background: var(--soft-teal); color: var(--teal); }
+
+    /* 证据条 / 资产校验指标 */
+    .stat-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0 6px;
+    }
+
+    .stat-strip .s {
+      background: var(--soft-teal);
+      border: 1px solid rgba(8,123,120,0.22);
+      border-radius: 8px;
+      padding: 15px 16px;
+    }
+
+    .stat-strip .s b { display: block; font-size: 22px; line-height: 1.1; color: var(--ink); margin-bottom: 4px; }
+    .stat-strip .s span { font-size: 12.5px; color: var(--muted); }
+
+    .path {
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+      font-size: 12.5px;
+      color: var(--blue);
+      background: var(--soft-blue);
+      padding: 1px 6px;
+      border-radius: 5px;
+      word-break: break-all;
+    }
+
+    /* 成果截图：showcase 大图 + 画廊 */
+    .showcase {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+      gap: 0;
+      margin: 20px 0 8px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .showcase img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 340px;
+      object-fit: cover;
+      background: #11181f;
+    }
+
+    .showcase .cap { padding: 26px 28px; align-self: center; }
+    .showcase .cap h3 { margin-top: 0; }
+    .showcase .cap p:last-child { margin-bottom: 0; }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0 6px;
+    }
+
+    figure {
+      margin: 0;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: 196px;
+      object-fit: contain;
+      background: #11181f;
+    }
+
+    figure.light img { background: #f1f5f7; }
+
+    figcaption { padding: 12px 14px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    figcaption b { display: block; color: var(--ink); font-size: 13.5px; margin-bottom: 3px; }
+    figcaption .step { color: var(--teal); font-weight: 800; }
+
+    .img-note { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
+
+    footer {
+      padding: 24px clamp(24px, 5vw, 72px) 40px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .layout { display: block; }
+      aside { position: relative; height: auto; }
+      nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+      .hero-grid, .grid-3, .pillars, .owner-filter, .flow, .stat-strip, .gallery {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .summary, .grid-2, .showcase { grid-template-columns: 1fr; }
+      .showcase img { min-height: 280px; }
+    }
+
+    @media (max-width: 640px) {
+      .hero { padding-top: 40px; }
+      nav, .hero-grid, .grid-3, .pillars, .owner-filter, .flow, .stat-strip, .gallery { grid-template-columns: 1fr; }
+      section { padding-top: 34px; padding-bottom: 34px; }
+      .time-row { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; white-space: normal; }
+      th, td { min-width: 180px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <small>Honor of Kings Roblox vNext</small>
+        <strong>完整产品一期 · 立项决策</strong>
+      </div>
+      <nav>
+        <a href="#decision">项目结论</a>
+        <a href="#done">已经做的内容</a>
+        <a href="#todo">要做的内容</a>
+        <a href="#scope">一期交付范围</a>
+        <a href="#heroes">20 英雄内容池</a>
+        <a href="#art">美术与资产生产体系</a>
+        <a href="#gameplay">玩法与用户体验</a>
+        <a href="#plan">制作计划</a>
+        <a href="#budget">预算与资源</a>
+        <a href="#gate">成功标准与止损</a>
+        <a href="#vision">愿景与长期规划</a>
+        <a href="#risk">风险与决策项</a>
+      </nav>
+      <div class="side-note">
+        本页三段主线：一是已经做的内容，二是要做的内容，三是愿景与长期规划。其余章节都是为这三段服务的交付、计划、预算与风险说明。
+      </div>
+    </aside>
+
+    <main>
+      <header class="hero">
+        <div class="kicker">老板视角 · 立项决策页</div>
+        <h1>立项 Honor of Kings Roblox 完整产品一期。</h1>
+        <p class="lead">
+          当前项目已经具备英雄逻辑迁移、技能系统、移动端战斗基础和 Roblox 美术资产生产链路。一期要交付的是一个包含约 20 个英雄内容池、完整对局闭环、成长与运营能力的 Roblox 原生产品。长期目标是为 Honor of Kings 建立一个可持续更新、可扩展英雄内容、可承接 Roblox 用户增长的 IP 阵地。
+        </p>
+        <div class="hero-grid">
+          <div class="metric">
+            <b>约 20 英雄</b>
+            <span>一期英雄内容池规模，覆盖核心职业定位</span>
+          </div>
+          <div class="metric">
+            <b>3v3 / 4v4</b>
+            <span>短局团队竞技，移动端优先</span>
+          </div>
+          <div class="metric">
+            <b>自研资产链路</b>
+            <span>ComfyUI / Weaver / Roblox 部件化生产已跑通</span>
+          </div>
+          <div class="metric">
+            <b>64.3 万美元</b>
+            <span>一期基础制作成本，广告 credits 单列、不计入现金</span>
+          </div>
+        </div>
+      </header>
+
+      <section id="decision">
+        <div class="section-inner summary">
+          <div class="panel strong">
+            <span class="eyebrow">项目结论</span>
+            <p class="decision">
+              建议立项 Honor of Kings Roblox 完整产品一期：交付约 20 个英雄内容池、短局团队竞技、成长运营与可扩展资产体系。
+            </p>
+            <p>
+              一期的工作不是从零探索战斗系统。本地仓库已经跑通英雄逻辑迁移流程，技能系统、效果管线、移动端战斗基础和 Roblox 美术资产生产链路都已具备。一期的核心是把这套底座收束成一款可上线、可运营、可扩展的完整产品。
+            </p>
+            <div class="tag-row">
+              <span class="tag teal">建议立项</span>
+              <span class="tag blue">完整产品一期</span>
+              <span class="tag">20 英雄内容池</span>
+              <span class="tag amber">移动端优先</span>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>批准对象</h3>
+            <p>老板需要批准的是完整产品一期建设。内部制作可以分阶段推进与质量验收，但立项审批的对象是产品本身。</p>
+            <ul class="list">
+              <li>做什么：HoK 在 Roblox 上的英雄短局竞技产品。</li>
+              <li>基础在哪：英雄迁移、战斗系统、移动端、美术链路已成型。</li>
+              <li>交付什么：20 英雄内容池 + 完整对局闭环 + 成长运营。</li>
+              <li>要多少：64.3 万美元基础制作成本；广告 credits 单列、不是现金。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="done">
+        <div class="section-inner">
+          <span class="eyebrow">主线一</span>
+          <h2>已经做的内容</h2>
+          <p>
+            项目已经完成一轮工程化整理，形成三块底座：技术与战斗、产品功能、美术生产。下面的能力都可在本地仓库与资产产出中核查到。
+          </p>
+
+          <div class="grid-3">
+            <div class="card">
+              <span class="badge green">已跑通</span>
+              <h3>技术与战斗底座</h3>
+              <ul class="list">
+                <li>英雄配置自动发现（HeroRegistry）</li>
+                <li>技能配置自动注册 + ID 冲突保护（SkillRegistry）</li>
+                <li>统一技能基类 BaseSkill（CD / 符文 / 训练无 CD）</li>
+                <li>Archetype 中间层：Projectile / Area / Dash / Beam / Instant</li>
+                <li>Effect / Buff / SkillHelper 统一效果管线</li>
+                <li>15 个技能配置化迁移、廉颇等英雄迁移样例</li>
+              </ul>
+            </div>
+            <div class="card">
+              <span class="badge green">已具备</span>
+              <h3>产品功能底座</h3>
+              <ul class="list">
+                <li>大厅、选人、匹配 / 对局、训练模式</li>
+                <li>UI_HeroSelect 动态选人，随配置扩展</li>
+                <li>移动端输入、MobileHUD、虚拟摇杆、技能按钮</li>
+                <li>技能释放、伤害、控制、Buff、效果执行链路</li>
+                <li>短局对战相关模块：Lobby / Match / Duel / Training</li>
+              </ul>
+            </div>
+            <div class="card">
+              <span class="badge green">已成链路</span>
+              <h3>美术生产底座</h3>
+              <ul class="list">
+                <li>Roblox 风格英雄三视图 / 四视图 workflow</li>
+                <li>角色视觉设定 prompt 模板库</li>
+                <li>R15 标准身体 + 独立部件生产路线</li>
+                <li>Weaver / VISVISE / Blender / Validator 链路</li>
+                <li>已有英雄设定图、部件预览与 FBX 校验样例</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>关键工程证据</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>本地证据</th>
+                <th>当前状态</th>
+                <th>对一期的意义</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>HeroRegistry</td>
+                <td>自动扫描 <span class="path">ReplicatedStorage\Heroes</span>，按 HeroID 注册英雄。</td>
+                <td>新增英雄无需改硬编码列表，20 英雄扩展成本可控。</td>
+              </tr>
+              <tr>
+                <td>SkillRegistry</td>
+                <td>自动扫描 <span class="path">ReplicatedStorage\Skills</span>，按技能 ID 注册并防冲突。</td>
+                <td>英雄技能按文件拆分管理，配置互不污染。</td>
+              </tr>
+              <tr>
+                <td>Archetype 技能层</td>
+                <td>Projectile / Area / Dash / Beam / Instant 中间层成型（<span class="path">ServerModules\Archetypes</span>）。</td>
+                <td>新技能以继承 + 参数化为主，规模化生产效率提升。</td>
+              </tr>
+              <tr>
+                <td>15 技能配置化</td>
+                <td>REQ-006 测试报告：15 个技能格式统一，伤害 / CC / 护盾走统一管线。</td>
+                <td>英雄迁移底层方式已经成型，重点转为规模化执行。</td>
+              </tr>
+              <tr>
+                <td>廉颇迁移样例</td>
+                <td>LianPo_Skills 保留 HoK 原始技能 ID、EffectRefs 与标准字段。</td>
+                <td>可按原始表数据迁移英雄逻辑，并保留追溯与调参空间。</td>
+              </tr>
+              <tr>
+                <td>30+ 英雄扩展方案</td>
+                <td><span class="path">.GameDev\RESEARCH\30+英雄扩展架构方案.md</span> 记录接入流程、Effect ID 规划与配置拆分。</td>
+                <td>已有面向 20+ 英雄的架构设计，扩展路径清晰。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout">
+            <p>
+              结论：英雄逻辑迁移已经完成工程化整理。当前项目不再处于战斗系统探索阶段，已进入 20 英雄内容池的规模化生产阶段。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="todo">
+        <div class="section-inner">
+          <span class="eyebrow">主线二</span>
+          <h2>要做的内容</h2>
+          <p>
+            一期要做的是一款完整产品的一期版本，覆盖从进入游戏到对局结束、再到留存运营的完整闭环。下面是一期建设的主要内容。
+          </p>
+          <div class="grid-3">
+            <div class="card">
+              <span class="badge teal">玩法闭环</span>
+              <h3>完整对局体验</h3>
+              <ul class="list">
+                <li>完整大厅体验</li>
+                <li>选人与英雄展示</li>
+                <li>3v3 / 4v4 对局</li>
+                <li>技能、普攻、被动、局内目标</li>
+                <li>局后奖励结算</li>
+              </ul>
+            </div>
+            <div class="card">
+              <span class="badge teal">内容与成长</span>
+              <h3>内容池与留存</h3>
+              <ul class="list">
+                <li>约 20 个英雄内容池</li>
+                <li>英雄熟练度</li>
+                <li>任务系统</li>
+                <li>商店与基础商业化</li>
+                <li>外观与部件资产</li>
+              </ul>
+            </div>
+            <div class="card">
+              <span class="badge teal">表现与运营</span>
+              <h3>表现与 LiveOps</h3>
+              <ul class="list">
+                <li>VFX / SFX / 动作表现</li>
+                <li>基础 LiveOps 能力</li>
+                <li>数据看板</li>
+                <li>广告素材与创作者试玩包</li>
+                <li>移动端性能与可读性优化</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout">
+            <p>
+              一期建设覆盖玩法、内容、成长、商业化、表现与运营六条线。内部制作会拆成里程碑并设质量门槛，但对老板批准的对象，是可上线、可运营、可扩展的完整产品一期。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="scope">
+        <div class="section-inner">
+          <span class="eyebrow">交付定义</span>
+          <h2>产品一期交付范围</h2>
+          <p>
+            一期对外交付一款可上线运营的 Roblox 原生英雄竞技产品，内部代号暂定 <strong>Hero Brawl Arena</strong>。下表界定一期“做到什么程度算交付”。
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>交付项</th>
+                <th>一期标准</th>
+                <th>负责人关注点</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>对局体验</td>
+                <td>3v3 / 4v4 短局团队竞技，移动端优先，单局 5 到 8 分钟完整闭环。</td>
+                <td>新玩家能否快速上手并愿意复玩。</td>
+              </tr>
+              <tr>
+                <td>英雄内容池</td>
+                <td>约 20 个英雄达到可上线品质，覆盖射手、法师、战士、坦克、刺客、辅助。</td>
+                <td>角色差异化与内容厚度是否足够支撑留存。</td>
+              </tr>
+              <tr>
+                <td>成长与任务</td>
+                <td>英雄熟练度、任务系统、局后奖励形成日常回访理由。</td>
+                <td>留存曲线与长期投入意愿。</td>
+              </tr>
+              <tr>
+                <td>商业化</td>
+                <td>商店、外观、部件资产与基础变现入口上线。</td>
+                <td>变现节奏与公平感平衡。</td>
+              </tr>
+              <tr>
+                <td>美术与表现</td>
+                <td>英雄造型、VFX、SFX、动作、UI 与运营素材达到可上线观感。</td>
+                <td>IP 识别度与 Roblox 平台适配度。</td>
+              </tr>
+              <tr>
+                <td>运营能力</td>
+                <td>基础 LiveOps、数据看板、广告素材与创作者试玩包就绪。</td>
+                <td>上线后能否持续运营与增长。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="heroes">
+        <div class="section-inner">
+          <span class="eyebrow">内容规模</span>
+          <h2>20 英雄内容池</h2>
+          <p>
+            一期内容规模为约 20 个英雄。本地仓库已跑通英雄逻辑迁移流程，可以稳定开发 20 个左右英雄，覆盖职业分布、操作差异与内容生产节奏。
+          </p>
+          <div class="grid-3">
+            <div class="card">
+              <span class="badge green">已成样例</span>
+              <h3>现有英雄</h3>
+              <p>Angela、HouYi、LianPo、Lux 已形成配置、技能、效果与表现的完整管线样例，证明英雄逻辑迁移方式成立。</p>
+            </div>
+            <div class="card">
+              <span class="badge amber">首批扩展</span>
+              <h3>优先英雄组</h3>
+              <p>赵云、妲己、后羿、亚瑟、李白、安琪拉、孙尚香、张飞、韩信、貂蝉等，按职业与操作难度覆盖优先排期。</p>
+            </div>
+            <div class="card">
+              <span class="badge teal">补齐内容池</span>
+              <h3>第二批英雄</h3>
+              <p>由 CP、IP、策划与制作共同筛选，按玩家认知、职业覆盖、资产可用性与合规风险排序，补齐至约 20 个。</p>
+            </div>
+          </div>
+
+          <h3>英雄上线质量门槛（内部验收）</h3>
+          <p>以下分级是制作过程中的质量验收标准，用于管理每个英雄的完成度，统一在一期内推进至可上线品质。</p>
+          <table>
+            <thead>
+              <tr>
+                <th>质量门槛</th>
+                <th>验收内容</th>
+                <th>通过标准</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>L0 逻辑可玩</td>
+                <td>技能槽、CD、伤害、控制、护盾、位移、被动、命中判定。</td>
+                <td>本地多人测试可完成完整对局，无阻塞 Error。</td>
+              </tr>
+              <tr>
+                <td>L1 手感达标</td>
+                <td>移动端按键、技能前后摇、位移距离、命中与受击反馈。</td>
+                <td>玩家能区分英雄定位与节奏，核心技能有明确爽点。</td>
+              </tr>
+              <tr>
+                <td>L2 平衡达标</td>
+                <td>职业覆盖、胜率偏差、反制关系、操作难度、团队贡献。</td>
+                <td>无单英雄长期压制，无明显低价值英雄。</td>
+              </tr>
+              <tr>
+                <td>L3 上线达标</td>
+                <td>模型、动画、VFX、SFX、图标、介绍与合规素材。</td>
+                <td>达到上线观感，支持广告素材、主播体验与商店展示。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="art">
+        <div class="section-inner">
+          <span class="eyebrow">美术体系</span>
+          <h2>美术与资产生产体系</h2>
+          <p>
+            美术侧已经建立 Roblox 化资产生产链路的雏形。当前路线采用 Roblox R15 标准身体，叠加可控的头饰、武器、背饰、肩甲、贴图、Decal 与技能特效部件。这种部件化方式更符合 Roblox 平台的几何、性能、挂点与审核要求，也更适合 20 个英雄的规模化生产。
+          </p>
+
+          <div class="showcase">
+            <img src="assets/05_model_closeup.png" alt="链路样例英雄 · 带贴图 3D 模型面部特写" />
+            <div class="cap">
+              <span class="badge green">本地真实产出</span>
+              <h3>从设定图到可入 Studio 的 3D 角色</h3>
+              <p>
+                图为资产链路打通的样例英雄（pink hero demo）。从二维设定图出发，经四视图、部件化建模、Weaver 高模、Retopology、Blender 后处理，产出带贴图、带挂点、可进 Roblox Studio 适配的低模角色。这条链路已经能稳定走通，是 20 英雄规模化视觉生产的基础。
+              </p>
+            </div>
+          </div>
+
+          <h3>已跑通的资产生产链路</h3>
+          <div class="flow">
+            <div class="flow-step">
+              <b>设定与四视图</b>
+              <strong>英雄视觉设定</strong>
+              <span>Roblox 风格三视图 / 四视图生成，配合角色 prompt 模板库产出设定图。</span>
+            </div>
+            <div class="flow-step">
+              <b>部件化</b>
+              <strong>独立部件方案</strong>
+              <span>头饰、面具、肩甲、武器、背饰、尾巴、贴图按部件拆分，对应 R15 挂点。</span>
+            </div>
+            <div class="flow-step">
+              <b>高模生成</b>
+              <strong>Weaver / VISVISE</strong>
+              <span>四视图部件输入生成高模，再做 Retopology 控制面数。</span>
+            </div>
+            <div class="flow-step">
+              <b>后处理</b>
+              <strong>Blender + FBX</strong>
+              <span>Blender 后处理，导出 Roblox rigid accessory FBX。</span>
+            </div>
+            <div class="flow-step">
+              <b>校验打包</b>
+              <strong>Validator + Studio 包</strong>
+              <span>BlenderRobloxValidator 校验，产出 studio package、assembly plan 与 validation report。</span>
+            </div>
+          </div>
+
+          <h3>链路各步真实截图</h3>
+          <p>以下为同一个样例英雄在链路各阶段的本地真实产出，对应上面五个步骤。</p>
+          <div class="gallery">
+            <figure class="light">
+              <img src="assets/02_hero_reference.png" alt="角色视觉设定图与三视图" />
+              <figcaption>
+                <b><span class="step">① 设定</span> 视觉设定图</b>
+                角色参考设定 + 三视图，确定造型、色板与体型。
+              </figcaption>
+            </figure>
+            <figure class="light">
+              <img src="assets/01_hero_turnaround.png" alt="Roblox 风格英雄四视图" />
+              <figcaption>
+                <b><span class="step">② 部件</span> 四视图 turnaround</b>
+                前/侧/背多视图，作为部件化与建模输入。
+              </figcaption>
+            </figure>
+            <figure>
+              <img src="assets/03_part_whitebox.png" alt="3D 部件白模预览" />
+              <figcaption>
+                <b><span class="step">③ 建模</span> 3D 部件白模</b>
+                Weaver / VISVISE 生成高模并 Retopology 控面。
+              </figcaption>
+            </figure>
+            <figure>
+              <img src="assets/04_model_front.png" alt="带贴图低模 Blender 渲染全身" />
+              <figcaption>
+                <b><span class="step">④ 贴图</span> 带贴图成品</b>
+                Blender 后处理 + 面部 Decal，导出可校验 FBX。
+              </figcaption>
+            </figure>
+          </div>
+          <p class="img-note">注：上图样例英雄为资产链路验证用 demo 角色；用于证明生产链路成立，正式英雄按 20 英雄名单生产。</p>
+
+          <h3>已用于真实王者英雄</h3>
+          <p>这条链路不止跑通 demo 角色，已用于王者正式英雄的 Roblox 化建模。以小乔为例，从高模到 Roblox 风格带贴图低模均已产出。</p>
+          <div class="gallery" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+            <figure>
+              <img src="assets/07_xiaoqiao_highmodel.png" alt="小乔 Roblox 化高模白模" />
+              <figcaption>
+                <b><span class="step">高模</span> 小乔 · 高模白模</b>
+                Roblox 风格化建模，确定体块、发型与服装结构。
+              </figcaption>
+            </figure>
+            <figure class="light">
+              <img src="assets/06_xiaoqiao_front.png" alt="小乔 Roblox 化带贴图低模" />
+              <figcaption>
+                <b><span class="step">成品</span> 小乔 · 带贴图低模</b>
+                Roblox 风格带贴图低模，保留小乔标志性发髻与汉服元素。
+              </figcaption>
+            </figure>
+          </div>
+          <p class="img-note">说明：小乔为王者荣耀正式英雄，此处展示其 Roblox 化建模产出，证明资产链路可直接服务 20 英雄正式内容生产（最终上线造型以 CP 与 IP 审批为准）。</p>
+
+          <h3>已有产物与校验证据</h3>
+          <div class="stat-strip">
+            <div class="s"><b>11 / 11</b><span>rigid accessory 校验全部通过（overall_pass = true）</span></div>
+            <div class="s"><b>1752 / 4000</b><span>三角面数，低于 Roblox 部件上限</span></div>
+            <div class="s"><b>0</b><span>non-manifold edges，网格闭合达标</span></div>
+            <div class="s"><b>HatAttachment</b><span>已写入挂点标记，可进 Studio 适配</span></div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>产物</th>
+                <th>内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>英雄设定图</td>
+                <td>粉色英雄正 / 侧 / 背多视图与参考设定图（<span class="path">pink_hero_hd_contact_sheet.png</span> / <span class="path">pink_hero_hd_reference.png</span>）。</td>
+              </tr>
+              <tr>
+                <td>部件预览</td>
+                <td>部件 3D 预览图（<span class="path">Model2026061100288786\preview.png</span>）。</td>
+              </tr>
+              <tr>
+                <td>FBX 校验样例</td>
+                <td>rigid accessory 校验 11/11 通过（<span class="path">roblox_part_accessory_validated.fbx.validation.json</span>）。</td>
+              </tr>
+              <tr>
+                <td>生产计划</td>
+                <td>main_hat、face_mark、test_cape 等部件计划，main_hat 已有 FBX 输出（<span class="path">studio_package\planning\production_plan.md</span>）。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>一期美术交付拆分</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>交付块</th>
+                <th>内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>英雄视觉适配</td>
+                <td>约 20 个英雄的 Roblox 化造型、色板、体型与部件拆分。</td>
+              </tr>
+              <tr>
+                <td>角色资产</td>
+                <td>R15 基础体型策略，头饰、肩甲、武器、背饰、面部贴图、服装图案。</td>
+              </tr>
+              <tr>
+                <td>技能表现</td>
+                <td>弹道、AOE、护盾、命中、受击、控制、位移与终极技能表现。</td>
+              </tr>
+              <tr>
+                <td>UI 资产</td>
+                <td>头像、技能图标、选人卡、局后结算、任务与商店界面。</td>
+              </tr>
+              <tr>
+                <td>运营素材</td>
+                <td>广告图、缩略图、创作者试玩包、活动 banner。</td>
+              </tr>
+              <tr>
+                <td>资产验收</td>
+                <td>三角面、尺寸、Attachment、贴图上限、Studio Accessory Fitting Tool、移动端可读性。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout">
+            <p>
+              一期要把这条已跑通的链路产品化，用于 20 个英雄的视觉适配、部件资产、技能表现、UI 与运营素材生产，形成可持续的资产产线，而不是逐个英雄手工返工。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="gameplay">
+        <div class="section-inner">
+          <span class="eyebrow">玩法</span>
+          <h2>玩法与用户体验</h2>
+          <p>
+            一期玩法采用 Hero Brawl Arena：小地图团队对抗，保留英雄技能、团队配合、目标争夺与局内成长，节奏更短、目标更直观，匹配 Roblox 玩家的快速进入与社交习惯。
+          </p>
+
+          <div class="gallery" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+            <figure class="light">
+              <img src="assets/10_map_board.png" alt="王者峡谷真实结构 + 四季主题化地图设计稿" />
+              <figcaption>
+                <b><span class="step">地图设计</span> 王者峡谷结构 + 四季主题</b>
+                以真实峡谷拓扑为骨架（双方基地 / 三路 / 野区 / 河道目标），再叠加四季主题化外观。
+              </figcaption>
+            </figure>
+            <figure class="light">
+              <img src="assets/11_skill_hud.png" alt="右下技能区与移动端 HUD 交互设计稿" />
+              <figcaption>
+                <b><span class="step">操控设计</span> 移动端技能区交互</b>
+                右下技能区布局、技能比例、施法态与瞄准反馈，对齐移动端优先的操作体验。
+              </figcaption>
+            </figure>
+          </div>
+          <p class="img-note">以上为已有的地图与操控设计产出，一期据此落地 3v3 / 4v4 地图与移动端 HUD。</p>
+
+          <div class="flow">
+            <div class="flow-step">
+              <b>Step 1</b>
+              <strong>选择英雄</strong>
+              <span>用职业、难度、技能标签帮助玩家在 10 秒内完成选择。</span>
+            </div>
+            <div class="flow-step">
+              <b>Step 2</b>
+              <strong>进入短局</strong>
+              <span>3v3 / 4v4 小地图，目标清晰，战斗密度高。</span>
+            </div>
+            <div class="flow-step">
+              <b>Step 3</b>
+              <strong>释放技能</strong>
+              <span>英雄差异来自技能形态、位移、控制、爆发、保护与连招窗口。</span>
+            </div>
+            <div class="flow-step">
+              <b>Step 4</b>
+              <strong>获得奖励</strong>
+              <span>局后给英雄熟练度、任务、外观进度与社交展示素材。</span>
+            </div>
+            <div class="flow-step">
+              <b>Step 5</b>
+              <strong>继续尝试</strong>
+              <span>20 英雄内容池提供“再换一个英雄”的复玩理由。</span>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>设计项</th>
+                <th>一期方案</th>
+                <th>关注点</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>对局规模</td>
+                <td>3v3 与 4v4 双配置，默认入口按内部数据确定。</td>
+                <td>匹配时长、退局率、团战可读性、移动端操作负担。</td>
+              </tr>
+              <tr>
+                <td>对局时长</td>
+                <td>5 到 8 分钟，允许快速复活与高频交战。</td>
+                <td>首局完成率、第二局点击率、局中流失。</td>
+              </tr>
+              <tr>
+                <td>成长系统</td>
+                <td>局内轻成长 + 局外英雄熟练度，避免早期数值压制新玩家。</td>
+                <td>新手首胜率、老玩家留存、公平感反馈。</td>
+              </tr>
+              <tr>
+                <td>商业化入口</td>
+                <td>外观、动作、特效、表情、英雄展示位优先，礼包随留存放量。</td>
+                <td>商店点击率、装扮使用率、付费转化与口碑。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout">
+            <p>
+              体验承诺：玩家第一分钟能完成选人、移动、释放技能、造成伤害并看懂胜负目标；第一天能在多个英雄之间感受到明显差异。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="plan">
+        <div class="section-inner">
+          <span class="eyebrow">执行</span>
+          <h2>制作计划</h2>
+          <p>
+            一期建设分阶段推进。下面的 P0 / Alpha / Soft Launch 是内部制作里程碑与质量验收节点，用于管理进度与品质，最终交付物是完整产品一期。
+          </p>
+          <div class="timeline">
+            <div class="time-row">
+              <b>2026 年 6 月</b>
+              <p>立项确认：锁定一期目标、约 20 英雄候选名单、玩法承载方式、CP 交付边界、预算与广告 credits 使用条件。</p>
+            </div>
+            <div class="time-row">
+              <b>2026 年 7 月</b>
+              <p>P0 里程碑：完成核心战斗与生产流程定稿，跑通代表性英雄模板（弹道、范围、位移、引导、瞬发、复合），落地 20 英雄迁移排期与验收表。</p>
+            </div>
+            <div class="time-row">
+              <b>2026 年 8-9 月</b>
+              <p>Alpha 里程碑：推进约 20 个英雄逻辑与表现，完成 3v3 / 4v4 地图、移动端 HUD、局后奖励、匹配与关键性能优化，美术资产产线规模化运转。</p>
+            </div>
+            <div class="time-row">
+              <b>2026 年 10-11 月</b>
+              <p>上线准备：英雄按 L3 门槛收尾，完善商店、任务、外观、数据看板、广告落地页与创作者试玩包。</p>
+            </div>
+            <div class="time-row">
+              <b>2026 Q4 起</b>
+              <p>Soft Launch 验收：以小流量校验 D1 / D7、首局完成率、第二局点击率与广告获客效率，作为一期上线放量与二期规划的数据依据。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="budget">
+        <div class="section-inner">
+          <span class="eyebrow">资源</span>
+          <h2>预算与资源</h2>
+          <p>
+            一期基础制作成本建议 <strong>64.3 万美元（643,000 美元）</strong>，对应单人月约 9,600 美元，用于研发、美术、QA、管理与运营准备。Roblox 广告 credits 是条件性平台资源，<strong>不是现金、不计入制作预算</strong>，按下方口径单列管理。
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>预算项</th>
+                <th>金额（美元）</th>
+                <th>用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>核心开发</td>
+                <td>25.8 万</td>
+                <td>战斗系统、英雄迁移、匹配与对局、移动端输入、成长与商店、数据看板。</td>
+              </tr>
+              <tr>
+                <td>美术与资产产线</td>
+                <td>18.5 万</td>
+                <td>资产链路产品化、英雄造型适配、动作、VFX、SFX、UI 与运营素材。</td>
+              </tr>
+              <tr>
+                <td>QA 与平衡</td>
+                <td>8.0 万</td>
+                <td>20 英雄测试矩阵、多人 Local Server 测试、性能、移动端兼容、平衡迭代。</td>
+              </tr>
+              <tr>
+                <td>项目管理与预备金</td>
+                <td>7.0 万</td>
+                <td>排期管理、CP 对接、风险缓冲、审批返工与临时外包。</td>
+              </tr>
+              <tr>
+                <td>运营工具与内容准备</td>
+                <td>5.0 万</td>
+                <td>活动配置、商店配置、创作者试玩包、素材版本管理。</td>
+              </tr>
+              <tr>
+                <td>合计</td>
+                <td>64.3 万</td>
+                <td>一期基础制作成本（现金）。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>广告 credits 与买量资源的口径（重要）</h3>
+          <p>这一块必须和制作预算分开看，避免把平台资源误读成现金或确定性收入。</p>
+          <table>
+            <thead>
+              <tr>
+                <th>资源项</th>
+                <th>口径</th>
+                <th>关键约束</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>基础制作成本</td>
+                <td>643,000 美元现金</td>
+                <td>作为 2026 年 7-11 月一期制作基准。</td>
+              </tr>
+              <tr>
+                <td>Developer UA Match</td>
+                <td>至少预留 100,000 美元现金</td>
+                <td>使用 Roblox 初始 10 万美元 UA 时，开发方需 1:1 等额现金匹配。</td>
+              </tr>
+              <tr>
+                <td>Roblox 广告 credits</td>
+                <td>最高 1,000,000 美元平台 credits</td>
+                <td>不是现金；受 Developer Match、iROAS 与平台判断约束，仅在数据正向时放大增长。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout">
+            <p>
+              一句话口径：Roblox 给的是最高 100 万美元平台广告 credits，不是 100 万美元现金。初始最多 10 万美元 UA 需开发方等额现金匹配，后续投放取决于 iROAS。这个资源只能放大正向产品，不能用来补救产品问题；任一核心指标不达标即停止烧 credits。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="gate">
+        <div class="section-inner">
+          <span class="eyebrow">成功标准</span>
+          <h2>成功标准与止损</h2>
+          <p>
+            一期投入对应明确的过关门槛与止损线。下面的数字是各制作里程碑的验收标准，用来回答"什么算做成了、什么时候该停"，让投入可控、决策有据。
+          </p>
+
+          <h3>体验 Gate（必须先过）</h3>
+          <table>
+            <thead>
+              <tr><th>指标</th><th>门槛</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>首个有效交互</td><td>≤ 10 秒</td></tr>
+              <tr><td>首个奖励</td><td>≤ 30 秒</td></tr>
+              <tr><td>首次战斗</td><td>≤ 60 秒</td></tr>
+              <tr><td>首局完成率</td><td>≥ 70%</td></tr>
+              <tr><td>次局率</td><td>≥ 40%</td></tr>
+              <tr><td>平均局长</td><td>3 – 5 分钟</td></tr>
+              <tr><td>移动端性能</td><td>中端 Android 30fps</td></tr>
+            </tbody>
+          </table>
+
+          <h3>商业 Gate（体验过关后再看）</h3>
+          <table>
+            <thead>
+              <tr><th>指标</th><th>门槛</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>次日留存 D1</td><td>≥ 25%</td></tr>
+              <tr><td>七日留存 D7</td><td>≥ 8%</td></tr>
+              <tr><td>初始变现</td><td>正向，且不伤害留存与公平感</td></tr>
+              <tr><td>HOK 导流链路</td><td>曝光 → 点击 → code → 下载 → 首局完成可追踪</td></tr>
+              <tr><td>iROAS</td><td>接近或达到 100% 后才扩大 UA</td></tr>
+            </tbody>
+          </table>
+
+          <div class="callout">
+            <p>
+              判断顺序（止损线）：首局体验没过，不谈内容扩张；留存没过，不烧 UA；变现没过，不谈 iROAS；导流不可追踪，不谈 HOK 商业价值。任一上游门槛不达标，先修不扩。
+            </p>
+          </div>
+
+          <h3>各里程碑的过关与止损</h3>
+          <table>
+            <thead>
+              <tr><th>里程碑</th><th>过关标准</th><th>不过关则止损</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>P0 Prototype</td>
+                <td>核心战斗闭环可玩，3v3 / 4v4 对照数据成立，首战 60 秒内。</td>
+                <td>核心战斗与首局体验不成立，不进入英雄量产。</td>
+              </tr>
+              <tr>
+                <td>Alpha 内容</td>
+                <td>英雄按 L0–L3 门槛推进，主模式可连续多人测试，移动端可读。</td>
+                <td>宁可少上几个英雄，也不让半成品英雄拉低整体手感与观感。</td>
+              </tr>
+              <tr>
+                <td>Soft Launch</td>
+                <td>体验 Gate 与商业 Gate 达标，导流链路可追踪。</td>
+                <td>留存 / 变现 / 导流任一不达标，停止扩量，不烧 credits。</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="img-note">说明：20 英雄是一期内容池的目标规模；外测与首发曝光按完成度（L3）选择稳定英雄，质量优先于凑数。</p>
+        </div>
+      </section>
+
+      <section id="vision">
+        <div class="section-inner">
+          <span class="eyebrow">主线三</span>
+          <h2>愿景与长期规划</h2>
+          <p>
+            一期交付完整产品后，项目按三层推进：先做成产品闭环，再扩内容与运营，最终成为 HoK 在 Roblox 上的长期 IP 阵地。
+          </p>
+          <div class="pillars">
+            <div class="pillar">
+              <span class="num">一期</span>
+              <h3>完成 20 英雄产品闭环</h3>
+              <ul class="list">
+                <li>约 20 英雄内容池</li>
+                <li>短局团队竞技</li>
+                <li>完整基础功能</li>
+                <li>可运营资产生产流程</li>
+              </ul>
+            </div>
+            <div class="pillar">
+              <span class="num">二期</span>
+              <h3>扩内容与运营</h3>
+              <ul class="list">
+                <li>扩英雄、扩模式</li>
+                <li>赛季体系</li>
+                <li>皮肤 / 外观</li>
+                <li>活动与创作者合作</li>
+              </ul>
+            </div>
+            <div class="pillar">
+              <span class="num">长期</span>
+              <h3>HoK 的 Roblox IP 阵地</h3>
+              <ul class="list">
+                <li>年轻与海外用户触达</li>
+                <li>Roblox 社交传播</li>
+                <li>UGC 平台内容增长</li>
+                <li>可持续英雄与外观资产体系</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout">
+            <p>
+              Honor of Kings Roblox vNext 是 HoK 在 Roblox 上的完整产品一期：基于已跑通的英雄逻辑迁移、美术资产生产与移动端战斗底座，交付 20 个英雄内容池、短局团队竞技、成长运营与可扩展资产体系，为 HoK 建立长期可运营的 Roblox IP 阵地。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="risk">
+        <div class="section-inner">
+          <span class="eyebrow">风险与决策</span>
+          <h2>风险与决策项</h2>
+          <div class="grid-2">
+            <div class="card">
+              <span class="badge red">风险 1</span>
+              <h3>20 英雄的质量分层压力</h3>
+              <p>应对：用 L0 到 L3 门槛管理每个英雄的完成度，按统一节奏推进至上线品质，避免数量目标压过品质。</p>
+            </div>
+            <div class="card">
+              <span class="badge red">风险 2</span>
+              <h3>Roblox 用户理解成本</h3>
+              <p>应对：短局、小地图、强目标提示、移动端按键容错与第一分钟教学，复杂规则只保留服务爽感与复玩的部分。</p>
+            </div>
+            <div class="card">
+              <span class="badge amber">风险 3</span>
+              <h3>IP 表现与 Roblox 风格适配</h3>
+              <p>应对：CP 先锁定英雄名单、视觉尺度、动作风格与可用资产范围，模型和特效按 Roblox 可读性做部件化适配。</p>
+            </div>
+            <div class="card">
+              <span class="badge amber">风险 4</span>
+              <h3>竞技公平与作弊</h3>
+              <p>应对：服务端保持技能判定、伤害、CD 与关键状态权威，客户端只负责输入、预测与表现，数据上报用于异常检测。</p>
+            </div>
+          </div>
+
+          <h3>立项会决策项</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>决策项</th>
+                <th>建议结论</th>
+                <th>会后负责人</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>是否批准一期建设</td>
+                <td>建议批准 Honor of Kings Roblox 完整产品一期建设，交付约 20 英雄内容池与完整对局运营闭环。</td>
+                <td>工作室负责人 / 项目负责人</td>
+              </tr>
+              <tr>
+                <td>英雄内容规模</td>
+                <td>确认约 20 个英雄作为一期内容池，按 L0 到 L3 门槛管理完成度。</td>
+                <td>策划负责人 / 技术负责人 / QA</td>
+              </tr>
+              <tr>
+                <td>玩法承载方式</td>
+                <td>采用 Hero Brawl Arena，3v3 / 4v4 双配置，默认入口由内部数据确定。</td>
+                <td>玩法负责人 / 数据负责人</td>
+              </tr>
+              <tr>
+                <td>美术资产产线</td>
+                <td>批准将已跑通的 ComfyUI / Weaver / Roblox 资产链路产品化，支撑 20 英雄规模化生产。</td>
+                <td>美术负责人 / 技术负责人</td>
+              </tr>
+              <tr>
+                <td>基础制作预算</td>
+                <td>批准 64.3 万美元（643,000 美元）一期基础制作成本（现金）。</td>
+                <td>PM / 商务 / 运营</td>
+              </tr>
+              <tr>
+                <td>买量与 credits 口径</td>
+                <td>确认 Developer UA Match 至少预留 10 万美元现金；广告 credits 不计入现金，仅在 KPI 达标后分阶段释放，不达标即停。</td>
+                <td>商务 / 财务 / 运营</td>
+              </tr>
+              <tr>
+                <td>成功标准与止损</td>
+                <td>确认体验 / 商业 Gate 门槛与各里程碑止损线，作为后续投入与扩量的判断依据。</td>
+                <td>项目负责人 / 数据负责人</td>
+              </tr>
+              <tr>
+                <td>CP 与 IP 交付</td>
+                <td>确认英雄名单、素材范围、审批时限、宣传口径与合规边界。</td>
+                <td>商务 / IP / 美术负责人</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer>
+        Honor of Kings Roblox vNext 立项决策页 · 完整产品一期口径 · 生成日期：2026-06-13
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # 项目长期记忆
 
-> 最后更新: 2026-03-15
+> 最后更新: 2026-03-18
 
 ## 项目概况
 
@@ -8,7 +8,69 @@
 - **技术栈**: Luau (Roblox) + Rojo 项目结构 + Client-Server 架构
 - **当前英雄**: Lux / Angela / HouYi / LianPo (4英雄, 15技能)
 - **AI 开发流水线**: 制作人→PM→策划→主程→程序→QA→交付 (`.GameDev/` 目录)
-- **规则体系**: `.codebuddy/rules/skills/` 下 6 个 Skill 技能包
+- **规则体系**: `.codebuddy/rules/skills/` 下 8 个领域知识模块 + 11 个技术 Skill
+
+## 移动端 UI 自适应标准 (2026-03-17 建立，强制规范)
+
+> 规范文档: `rules/skills/domain-ui/mobile-ui-adaptive-standard.md`
+> 所有新增/修改的移动端 UI 代码必须遵守。
+
+### 核心原则 (6条)
+1. **Scale First** — Position/Size 主值用 Scale(0~1)，Offset 仅用于 ≤10px 微调
+2. **Offset Minimal** — 禁止 `UDim2.new(0, largePixels, 0, largePixels)` 的大元素
+3. **Constrain Always** — 所有 Scale 元素必须加 UISizeConstraint (可交互最小44×44px)
+4. **Text Bounded** — 所有 TextScaled 必须加 UITextSizeConstraint (Min≥10, Max≤40)
+5. **System SafeArea** — 用 ScreenGui.ScreenInsets = CoreUISafeInsets，不手动硬编码安全区像素
+6. **Test 3 Screens** — 必须在 750p/1170p/1640p 三种分辨率下验证
+
+### 关键实践
+- 等比元素(按钮/图标)用 `SizeConstraint = RelativeYY` 以屏高为基准
+- 圆角用 Scale: `UDim.new(0.15, 0)` 而非 `UDim.new(0, 20)`
+- UIStroke 粗细 1~3px 可接受，大于3px 需动态计算
+- Layout 容器优先用 UIListLayout/UIGridLayout + Scale Padding
+- ScreenGui 默认 CoreUISafeInsets (避开刘海+Roblox顶栏)，纯背景用 None
+
+### 当前项目现状
+- 移动端专用 UI (摇杆/技能/HUD): 自适应 75%+，基于 Scale + 屏高比
+- PC/共享 UI (HUD/背包/英雄选择/训练面板): 自适应 30%，大量硬编码像素
+- 缺少: UIAspectRatioConstraint / UISizeConstraint / UITextSizeConstraint
+- 安全区: 硬编码像素值，需迁移到 ScreenInsets
+- 采用渐进迁移策略: Phase1(新增强制) → Phase2(修改时补充) → Phase3(专项优化)
+
+## 领域知识索引系统 (2026-03-17 建立)
+
+> 解决全局文档全量加载浪费上下文的问题，知识按需加载，减少 ~70% 上下文消耗。
+
+- **索引入口**: `rules/skills/domain-index.md` — 关键词→领域模块映射
+- **8大领域模块** (每个 60-150行):
+  - D1 `domain-combat/combat-system.md` — 技能/伤害/Buff/效果/被动/能量
+  - D2 `domain-hero/hero-system.md` — 英雄配置/选择/属性/等级/新增英雄
+  - D3 `domain-movement/input-movement-system.md` — 摇杆/移动/输入/摄像机
+  - D4 `domain-ui/ui-components.md` — UI面板/HUD/布局/交互
+  - D5 `domain-networking/networking.md` — RemoteEvent/通信协议
+  - D6 `domain-economy/economy-system.md` — 装备/符文/经济
+  - D7 `domain-gameflow/game-flow.md` — 大厅/匹配/对决/训练场
+  - D8 `domain-project/project-status.md` — 项目进度/需求状态
+- **加载流程**: 提取关键词 → 读索引 → 只加载命中模块(1-3个) → 不够再回退全局文档
+- **全局文档降级为回退**: 全局策划案(409行)/全局技术文档(534行) 仅在领域模块不足时使用
+
+## 上下文分段执行策略 (2026-03-18 建立)
+
+> 解决完整FEATURE流程在单一会话中上下文爆炸的问题。配合领域知识索引系统，两套优化累计减少约 80% 的上下文浪费。
+
+- **核心机制**: 3段式执行 — 设计段→实现段→验收段，段间通过 `handoff.md` 交接
+- **断点位置**: 主程step-04完成后(设计→实现) + 程序step-05完成后(实现→验收)
+- **交接协议**: `rules/agents/01_项目管理Agent/templates/阶段交接协议.md`
+- **编码阶段优化**: 任务级compact(≥4任务中途compact) + 智能文件读取(先搜后读/避免重复读)
+- **预期效果**: 单段上下文峰值从 150K+ 降至 60-80K tokens (-50%)
+- **影响的规则文件**:
+  - `rule.md` — 上下文压缩策略章节新增分段执行+智能读取
+  - `rule_workflow.md` — 新增分段执行策略章节
+  - `04_程序Agent/step-03_编码实现.md` — 新增上下文管理策略章节
+  - `03_主程Agent/step-04_产出物检查.md` — 完成标志新增交接摘要写入
+  - `04_程序Agent/step-05_对抗审查.md` — 完成标志新增交接摘要写入
+  - `01_项目管理Agent/templates/上下文恢复协议.md` — 新增交接摘要恢复分支
+  - `agent-system.mdc` — 索引表新增交接协议引用
 
 ## 技能系统架构 (REQ-005/006/007 已完成)
 
@@ -108,7 +170,7 @@
 | REQ | 名称 | 状态 |
 |-----|------|------|
 | 001 | 初始系统 | ✅ |
-| 002 | 大厅UI+1v1对决 | ✅ |
+| 002 | 游戏主流程重设计(avatar漫游+PVP/训练场) | 🔄 进行中 |
 | 003 | (跳过) | ❌ |
 | 004 | Bug修复集 | ✅ |
 | 005 | 基础设施重构(Registry+Effect+Buff) | ✅ |

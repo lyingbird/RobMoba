@@ -169,8 +169,10 @@ task.delay(duration, function() bv:Destroy() end)
 
 **完成上述工作后，立即流转到下一阶段：**
 ```
-输出: "⚡ 流转至: QA Agent"
+输出: "📤 交接摘要已写入 handoff.md → 💡建议执行 /compact → ⚡ 流转至: QA Agent"
 ```
+
+> 📤 **断点提示**: 程序Agent完成是实现段→验收段的断点，建议 compact 后再继续QA测试。详见 `01_项目管理Agent/templates/阶段交接协议.md`
 
 ---
 
