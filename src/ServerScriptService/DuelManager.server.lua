@@ -12,6 +12,16 @@ task.wait(0.5)
 
 local DuelEvent = ReplicatedStorage:WaitForChild("DuelEvent", 10)
 
+local function fireDuelClient(player, data)
+	if not DuelEvent or not player or not player.Parent then return end
+	local ok, err = pcall(function()
+		DuelEvent:FireClient(player, data)
+	end)
+	if not ok then
+		warn("[DuelManager] Failed to fire DuelEvent:", err)
+	end
+end
+
 -- ========== 竞技场参数 ==========
 local ARENA_CENTER = Vector3.new(0, 62, 0) -- 竞技场中心坐标，需根据地图调整
 local SPAWN_DISTANCE = 40                   -- 各自距中心距离 (总间距80 studs)
@@ -67,10 +77,64 @@ local function clearTeam(player)
 	player.Team = nil
 end
 
+local function serializeStats(duel, stats)
+	local result = { players = {} }
+	for _, player in ipairs({ duel.player1, duel.player2 }) do
+		if player then
+			local heroId = shared.LobbyManager and shared.LobbyManager.GetPlayerHero(player) or nil
+			table.insert(result.players, {
+				userId = player.UserId,
+				name = player.Name,
+				team = player.Team and player.Team.Name or nil,
+				heroId = heroId,
+				kills = stats and stats[player] or 0,
+			})
+		end
+	end
+	return result
+end
+
+local function returnPlayerToLobby(player)
+	if not player or not player.Parent then return end
+
+	clearTeam(player)
+	if shared.LobbyManager then
+		shared.LobbyManager.SetPlayerState(player, "LOBBY")
+		shared.LobbyManager.ClearPlayerHero(player)
+	end
+	fireDuelClient(player, { type = "return_lobby" })
+
+	player:LoadCharacter()
+	local character = player.Character
+	local deadline = os.clock() + 5
+	while not character and player.Parent and os.clock() < deadline do
+		task.wait()
+		character = player.Character
+	end
+	local rootPart = character and character:WaitForChild("HumanoidRootPart", 10)
+	if rootPart then
+		rootPart.CFrame = CFrame.new(LOBBY_SPAWN)
+	end
+end
+
 -- ========== 对决生命周期 ==========
 local function createDuel(player1, player2)
 	if not player1 or not player1.Parent then return end
 	if not player2 or not player2.Parent then return end
+	if not shared.MatchSystem then
+		warn("[DuelManager] MatchSystem not available; cancelling duel")
+		if shared.LobbyManager then
+			shared.LobbyManager.SetPlayerState(player1, "LOBBY")
+			shared.LobbyManager.SetPlayerState(player2, "LOBBY")
+		end
+		local cancelData = { status = "cancelled", message = "MatchSystem unavailable" }
+		local matchmakingEvent = ReplicatedStorage:FindFirstChild("MatchmakingEvent")
+		if matchmakingEvent then
+			matchmakingEvent:FireClient(player1, cancelData)
+			matchmakingEvent:FireClient(player2, cancelData)
+		end
+		return
+	end
 
 	local duelId = nextDuelId
 	nextDuelId = nextDuelId + 1
@@ -79,6 +143,7 @@ local function createDuel(player1, player2)
 		player1 = player1,
 		player2 = player2,
 		active = true,
+		started = false,
 	}
 	playerDuelMap[player1] = duelId
 	playerDuelMap[player2] = duelId
@@ -90,78 +155,77 @@ local function createDuel(player1, player2)
 	local hero2 = shared.LobbyManager and shared.LobbyManager.GetPlayerHero(player2) or "Unknown"
 
 	-- 通知: matched
-	if DuelEvent then
-		DuelEvent:FireClient(player1, {
+	task.spawn(function()
+		fireDuelClient(player1, {
 			type = "matched",
 			opponent = { name = player2.Name, heroId = hero2 },
 		})
-		DuelEvent:FireClient(player2, {
+		fireDuelClient(player2, {
 			type = "matched",
 			opponent = { name = player1.Name, heroId = hero1 },
 		})
-	end
 
-	-- 倒计时
-	for i = COUNTDOWN_SECONDS, 1, -1 do
-		if not activeDuels[duelId] or not activeDuels[duelId].active then return end
-		if DuelEvent then
-			DuelEvent:FireClient(player1, { type = "countdown", seconds = i })
-			DuelEvent:FireClient(player2, { type = "countdown", seconds = i })
+		-- 倒计时
+		for i = COUNTDOWN_SECONDS, 1, -1 do
+			if not activeDuels[duelId] or not activeDuels[duelId].active then return end
+			fireDuelClient(player1, { type = "countdown", seconds = i })
+			fireDuelClient(player2, { type = "countdown", seconds = i })
+			task.wait(1)
 		end
-		task.wait(1)
-	end
 
-	if not activeDuels[duelId] or not activeDuels[duelId].active then return end
+		if not activeDuels[duelId] or not activeDuels[duelId].active then return end
+		if not player1.Parent then
+			endDuel(duelId, "BlueTeam", nil)
+			return
+		end
+		if not player2.Parent then
+			endDuel(duelId, "RedTeam", nil)
+			return
+		end
 
-	-- 分配阵营
-	assignTeam(player1, redTeam)
-	assignTeam(player2, blueTeam)
+		-- 分配阵营
+		assignTeam(player1, redTeam)
+		assignTeam(player2, blueTeam)
+		activeDuels[duelId].started = true
 
-	-- 传送到竞技场
-	local spawn1 = ARENA_CENTER + Vector3.new(-SPAWN_DISTANCE, 0, 0)
-	local spawn2 = ARENA_CENTER + Vector3.new(SPAWN_DISTANCE, 0, 0)
-	teleportPlayer(player1, spawn1)
-	teleportPlayer(player2, spawn2)
+		-- 传送到竞技场
+		local spawn1 = ARENA_CENTER + Vector3.new(-SPAWN_DISTANCE, 0, 0)
+		local spawn2 = ARENA_CENTER + Vector3.new(SPAWN_DISTANCE, 0, 0)
+		teleportPlayer(player1, spawn1)
+		teleportPlayer(player2, spawn2)
 
-	-- 通知: start
-	if DuelEvent then
-		DuelEvent:FireClient(player1, {
+		-- 通知: start
+		fireDuelClient(player1, {
 			type = "start",
 			team = "RedTeam",
 			arenaCenter = ARENA_CENTER,
 		})
-		DuelEvent:FireClient(player2, {
+		fireDuelClient(player2, {
 			type = "start",
 			team = "BlueTeam",
 			arenaCenter = ARENA_CENTER,
 		})
-	end
 
-	-- 启动 MatchSystem 战斗追踪
-	if shared.MatchSystem then
+		-- 启动 MatchSystem 战斗追踪
 		shared.MatchSystem.StartBattle()
-	end
 
-	print(("[DuelManager] Duel #%d started!"):format(duelId))
+		print(("[DuelManager] Duel #%d started!"):format(duelId))
 
-	-- 监听胜负 (轮询 MatchSystem)
-	task.spawn(function()
+		-- 监听胜负 (轮询 MatchSystem)
 		while activeDuels[duelId] and activeDuels[duelId].active do
 			task.wait(0.5)
 
 			-- 检查 MatchSystem 是否结束了 (matchActive=false 且有击杀数达标)
-			if shared.MatchSystem then
-				local killCount = shared.MatchSystem.GetKillCount()
-				local p1Kills = killCount[player1] or 0
-				local p2Kills = killCount[player2] or 0
+			local killCount = shared.MatchSystem.GetKillCount()
+			local p1Kills = killCount[player1] or 0
+			local p2Kills = killCount[player2] or 0
 
-				if p1Kills >= KILLS_TO_WIN then
-					endDuel(duelId, "RedTeam", killCount)
-					return
-				elseif p2Kills >= KILLS_TO_WIN then
-					endDuel(duelId, "BlueTeam", killCount)
-					return
-				end
+			if p1Kills >= KILLS_TO_WIN then
+				endDuel(duelId, "RedTeam", killCount)
+				return
+			elseif p2Kills >= KILLS_TO_WIN then
+				endDuel(duelId, "BlueTeam", killCount)
+				return
 			end
 
 			-- 检查玩家是否还在
@@ -195,37 +259,21 @@ endDuel = function(duelId, winnerTeam, stats)
 
 	-- 通知结算
 	if DuelEvent then
+		local statsPayload = serializeStats(duel, stats)
 		local resultData = {
 			type = "result",
 			winner = winnerTeam,
-			stats = stats or {},
+			stats = statsPayload,
+			players = statsPayload.players,
 		}
-		if player1 and player1.Parent then
-			DuelEvent:FireClient(player1, resultData)
-		end
-		if player2 and player2.Parent then
-			DuelEvent:FireClient(player2, resultData)
-		end
+		fireDuelClient(player1, resultData)
+		fireDuelClient(player2, resultData)
 	end
 
 	-- 等待结算展示
 	task.delay(RESULT_DISPLAY_TIME, function()
-		-- 清除阵营
-		if player1 and player1.Parent then
-			clearTeam(player1)
-			teleportPlayer(player1, LOBBY_SPAWN)
-			if shared.LobbyManager then
-				shared.LobbyManager.SetPlayerState(player1, "LOBBY")
-			end
-		end
-
-		if player2 and player2.Parent then
-			clearTeam(player2)
-			teleportPlayer(player2, LOBBY_SPAWN)
-			if shared.LobbyManager then
-				shared.LobbyManager.SetPlayerState(player2, "LOBBY")
-			end
-		end
+		returnPlayerToLobby(player1)
+		returnPlayerToLobby(player2)
 
 		-- 重置 MatchSystem
 		if shared.MatchSystem then
@@ -237,7 +285,7 @@ endDuel = function(duelId, winnerTeam, stats)
 		playerDuelMap[player2] = nil
 		activeDuels[duelId] = nil
 
-		print(("[DuelManager] Duel #%d cleanup complete, players returned to lobby"):format(duelId))
+		print(("[DuelManager] Duel #%d cleanup complete, players returned to lobby (avatar restoring)"):format(duelId))
 	end)
 end
 
@@ -265,6 +313,11 @@ end
 local DuelAPI = {}
 DuelAPI.CreateDuel = createDuel
 DuelAPI.OnPlayerDisconnect = onPlayerDisconnect
+function DuelAPI.IsPlayerInActiveBattle(player)
+	local duelId = playerDuelMap[player]
+	local duel = duelId and activeDuels[duelId]
+	return duel ~= nil and duel.active == true and duel.started == true
+end
 
 shared.DuelManager = DuelAPI
 

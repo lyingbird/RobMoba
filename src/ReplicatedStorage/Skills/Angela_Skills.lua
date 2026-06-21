@@ -13,6 +13,7 @@ return {
 		Range = 45,
 		EnergyCost = 50,
 		CastRule = "Direction",
+		aimType = "line",
 		ArchetypeType = "Projectile",
 		-- Archetype 参数 (特殊: 多弹散射, 重写OnCast)
 		Speed = 55,

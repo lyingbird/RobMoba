@@ -5,6 +5,7 @@ local LevelConfig = require(ReplicatedStorage:WaitForChild("LevelConfig"))
 local ServerScriptService = game:GetService("ServerScriptService")
 local ItemConfig = require(ReplicatedStorage:WaitForChild("ItemConfig"))
 local InventoryManager = require(ServerScriptService.ServerModules:WaitForChild("InventoryManager"))
+local MovementState = require(ServerScriptService.ServerModules:WaitForChild("MovementState"))
 
 local StatsManager = {}
 
@@ -87,7 +88,7 @@ local function recalculateStats(character)
 		elseif stat == "MoveSpeed" then
 			character:SetAttribute(stat, newVal)
 			if humanoid then
-				humanoid.WalkSpeed = newVal
+				MovementState.SetBaseSpeed(humanoid, newVal)
 			end
 		else
 			character:SetAttribute(stat, newVal)
@@ -285,6 +286,11 @@ function StatsManager.SetStat(character, statName, value)
 	elseif statName == "HP" then
 		local humanoid = character:FindFirstChild("Humanoid")
 		if humanoid then humanoid.Health = value end
+	elseif statName == "MoveSpeed" then
+		local humanoid = character:FindFirstChild("Humanoid")
+		if humanoid then
+			MovementState.SetBaseSpeed(humanoid, value)
+		end
 	end
 end
 

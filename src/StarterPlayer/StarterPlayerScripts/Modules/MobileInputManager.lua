@@ -14,6 +14,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local MobileConfig = require(script.Parent.MobileConfig)
+local MobileIndicatorManager = require(script.Parent.MobileIndicatorManager)
+local MobileCancelZone = require(script.Parent.Parent.UIComponents.MobileCancelZone)
+local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
 
 local MobileInputManager = {}
 
@@ -38,13 +41,29 @@ local AttackTargetEvent = nil
 -- 辅助函数
 -- ═══════════════════════════════════════
 
---- 2D屏幕方向 → 3D世界方向
---- 固定摄像机朝-Z: 摇杆X→世界X, 摇杆Y→世界-Z(屏幕Y正朝下, 世界-Z是前方)
+--- 2D屏幕方向 → 3D世界方向 (基于摄像机朝向)
+--- REQ-022: 摇杆输入通过摄像机 CFrame 做坐标变换，使"摇杆上"始终对应屏幕视觉上方
 local function screenToWorldDirection(screenDir: Vector2): Vector3
 	if screenDir.Magnitude < 0.01 then
 		return Vector3.zero
 	end
-	return Vector3.new(screenDir.X, 0, -screenDir.Y).Unit
+	local camera = workspace.CurrentCamera
+	if not camera then return Vector3.zero end
+	-- 摄像机 LookVector 投影到 XZ 平面 → "屏幕上"对应的世界前方
+	local camLook = camera.CFrame.LookVector
+	local flatForward = Vector3.new(camLook.X, 0, camLook.Z)
+	if flatForward.Magnitude < 0.001 then
+		-- 摄像机正朝下(极端情况) fallback
+		flatForward = Vector3.new(0, 0, -1)
+	else
+		flatForward = flatForward.Unit
+	end
+	-- 右方向 = forward 绕Y轴顺时针90度: (-fz, 0, fx)
+	local flatRight = Vector3.new(-flatForward.Z, 0, flatForward.X)
+	-- 组合: 摇杆X→世界右, 摇杆-Y→世界前(屏幕Y轴正方向朝下)
+	local worldDir = flatRight * screenDir.X + flatForward * (-screenDir.Y)
+	if worldDir.Magnitude < 0.001 then return Vector3.zero end
+	return worldDir.Unit
 end
 
 --- 获取最近敌人(客户端侧简化版)
@@ -99,6 +118,19 @@ local function getNearestEnemy(): Model?
 	return nearestTarget
 end
 
+local function directionToTargetPoint(direction: Vector3?): Vector3?
+	if not rootPart or typeof(direction) ~= "Vector3" then
+		return nil
+	end
+
+	local flatDirection = Vector3.new(direction.X, 0, direction.Z)
+	if flatDirection.Magnitude < 0.001 then
+		return nil
+	end
+
+	return rootPart.Position + flatDirection.Unit * 100
+end
+
 -- ═══════════════════════════════════════
 -- 输入处理回调
 -- ═══════════════════════════════════════
@@ -121,19 +153,31 @@ local function onJoystickDirection(direction: Vector2, magnitude: number)
 end
 
 --- 技能释放回调
-local function onSkillCast(skillId: number, direction: Vector3?)
+--- REQ-026: 🔴修复Bug — 回调签名从(skillId, direction)改为(slotKey, params)
+--- UI_SkillButtons 传 slotKey(string, "Q"/"W"/"R") 和 params(table)
+--- 修复: 原来传 skillId(number) 被服务端 typeof(key)~="string" 静默丢弃
+local function onSkillCast(slotKey: string, params: table?)
 	if not enabled then return end
 	if not CastSkillEvent then return end
 
 	currentState = "CASTING"
 
-	-- 发送方向(如果有)
-	if direction and SkillDirectionEvent then
-		SkillDirectionEvent:FireServer(direction)
+	-- REQ-026: 发送方向(兼容SkillDirectionEvent)
+	local direction = params and params.direction
+	local directionTarget = directionToTargetPoint(direction)
+	if directionTarget and SkillDirectionEvent then
+		SkillDirectionEvent:FireServer(directionTarget)
 	end
 
-	-- 发送技能释放
-	CastSkillEvent:FireServer(skillId, direction or Vector3.zero)
+	-- REQ-026: 发送技能释放 — 新协议(slotKey: string, params: table)
+	CastSkillEvent:FireServer(slotKey, params or {})
+	if directionTarget and SkillDirectionEvent then
+		task.delay(0.1, function()
+			if SkillDirectionEvent then
+				SkillDirectionEvent:FireServer(directionTarget)
+			end
+		end)
+	end
 
 	-- 立即回到 IDLE
 	currentState = "IDLE"
@@ -164,13 +208,37 @@ function MobileInputManager.Init(char: Model, mods: table)
 	modules = mods
 
 	-- 缓存 RemoteEvent 引用
-	CastSkillEvent = ReplicatedStorage:FindFirstChild("CastSkillEvent")
-	SkillDirectionEvent = ReplicatedStorage:FindFirstChild("SkillDirectionEvent")
-	AttackTargetEvent = ReplicatedStorage:FindFirstChild("AttackTargetEvent")
+	CastSkillEvent = ReplicatedStorage:WaitForChild("CastSkillEvent", 5)
+	SkillDirectionEvent = ReplicatedStorage:WaitForChild("SkillDirectionEvent", 5)
+	AttackTargetEvent = ReplicatedStorage:WaitForChild("AttackTargetEvent", 5)
+	if not CastSkillEvent then
+		warn("[MobileInputManager] CastSkillEvent missing; skills will not fire")
+	end
+	if not AttackTargetEvent then
+		warn("[MobileInputManager] AttackTargetEvent missing; attacks will not fire")
+	end
 
 	-- 关联 UI 组件
 	joystick = mods.joystick
 	skillButtons = mods.skillButtons
+
+	-- REQ-026: 初始化指示器和取消框
+	MobileIndicatorManager.Init(char)
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	MobileCancelZone.Init(playerGui)
+
+	-- REQ-026: 注入模块引用到 UI_SkillButtons
+	if skillButtons then
+		if skillButtons.SetIndicatorManager then
+			skillButtons.SetIndicatorManager(MobileIndicatorManager)
+		end
+		if skillButtons.SetCancelZone then
+			skillButtons.SetCancelZone(MobileCancelZone)
+		end
+		if skillButtons.SetSkillConfigs then
+			skillButtons.SetSkillConfigs(SkillRegistry)
+		end
+	end
 
 	-- 绑定回调
 	if joystick then
@@ -189,6 +257,9 @@ function MobileInputManager.Init(char: Model, mods: table)
 	end
 
 	currentState = "IDLE"
+
+	-- REQ-021: Init完成后自动启用，使大厅/训练场模式下也能正常工作
+	MobileInputManager.SetEnabled(true)
 end
 
 --- 启用/禁用全部输入
@@ -232,6 +303,10 @@ function MobileInputManager.Destroy()
 	SkillDirectionEvent = nil
 	AttackTargetEvent = nil
 	currentState = "IDLE"
+
+	-- REQ-026: 清理指示器和取消框
+	MobileIndicatorManager.Destroy()
+	MobileCancelZone.Destroy()
 end
 
 return MobileInputManager

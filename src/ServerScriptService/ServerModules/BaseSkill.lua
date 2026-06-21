@@ -57,6 +57,10 @@ function BaseSkill:StartCooldown(player)
 	self.LastCastTime = os.clock()
 end
 
+function BaseSkill:ResetCooldown()
+	self.LastCastTime = 0
+end
+
 function BaseSkill:OnCast(player, targetPos)
 	warn(self.Config.Name .. " has no OnCast implementation!")
 end

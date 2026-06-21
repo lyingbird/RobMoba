@@ -174,6 +174,10 @@ function LianPoW:OnInstantCast(player, targetPos)
 
 		-- ④ 命中敌方英雄 → 刷新Q冷却 (来源: 105260)
 		if #outerEnemies > 0 and self.Config.RefreshQOnHit then
+			if shared.PlayerSkillManager then
+				shared.PlayerSkillManager.ResetCooldown(player, "Q", 10510)
+			end
+
 			local SyncCooldownEvent = ReplicatedStorage:FindFirstChild("SyncCooldownEvent")
 			if SyncCooldownEvent then
 				SyncCooldownEvent:FireClient(player, "Q", 0, 10510)

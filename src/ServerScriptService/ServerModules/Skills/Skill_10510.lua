@@ -68,12 +68,11 @@ local function createDashVFX(startPos, endPos, width)
 	Debris:AddItem(dustPart, 1)
 end
 
-function LianPoQ:OnDashStart(player, startPos)
+function LianPoQ:OnDashStart(player, startPos, dashDirection)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-	local rootPart = character.HumanoidRootPart
 	local config = self:GetDashConfig()
-	local direction = rootPart.CFrame.LookVector
+	local direction = dashDirection or character.HumanoidRootPart.CFrame.LookVector
 	local endPos = startPos + direction * config.MaxRange
 	createDashVFX(startPos, endPos, config.Width)
 

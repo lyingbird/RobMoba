@@ -30,6 +30,46 @@ local ATTACK_INTERVAL = 0.8
 local playerLastAttack = {}
 local playerAnimating = {}
 
+local ATTACK_ALLOWED_STATES = {
+	DUELING = true,
+	TRAINING = true,
+}
+
+local function getPlayerState(player)
+	if shared.LobbyManager then
+		return shared.LobbyManager.GetPlayerState(player)
+	end
+	return "LOBBY"
+end
+
+local function canPlayerAutoAttack(player)
+	local state = getPlayerState(player)
+	if not ATTACK_ALLOWED_STATES[state] then
+		return false
+	end
+
+	if state == "DUELING" then
+		if not shared.DuelManager or not shared.DuelManager.IsPlayerInActiveBattle(player) then
+			return false
+		end
+	end
+
+	local character = player.Character
+	if not character then return false end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not rootPart or humanoid.Health <= 0 then
+		return false
+	end
+
+	if humanoid:GetAttribute("CanAutoAttack") == false then
+		return false
+	end
+
+	return true, character, humanoid, rootPart
+end
+
 -- 程序攻击动画：身体前倾 + 右臂挥砍
 local function playAttackAnimation(character, targetRoot)
 	local humanoid = character:FindFirstChild("Humanoid")
@@ -123,7 +163,11 @@ local function playAttackAnimation(character, targetRoot)
 end
 
 local function createSlashVFX(originRoot, targetRoot)
-	local direction = (targetRoot.Position - originRoot.Position).Unit
+	local offset = targetRoot.Position - originRoot.Position
+	local direction = offset.Magnitude >= 0.001 and offset.Unit or originRoot.CFrame.LookVector
+	if direction.Magnitude < 0.001 then
+		direction = Vector3.new(0, 0, -1)
+	end
 	local midPoint = originRoot.Position + direction * 3
 
 	local slash = Instance.new("Part")
@@ -147,16 +191,15 @@ end
 AttackTargetEvent.OnServerEvent:Connect(function(player, targetModel)
 	if not targetModel or not targetModel:IsA("Model") then return end
 
+	local canAttack, character, _, rootPart = canPlayerAutoAttack(player)
+	if not canAttack then return end
+
 	-- 使用 CombatUtils 统一验证：目标必须是敌方（NPC 或敌方玩家）
 	if not CombatUtils.isEnemy(player, targetModel) then return end
 
 	local targetHumanoid = targetModel:FindFirstChild("Humanoid")
 	local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
 	if not targetHumanoid or not targetRoot or targetHumanoid.Health <= 0 then return end
-
-	local character = player.Character
-	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-	if not rootPart then return end
 
 	local dist = (rootPart.Position - targetRoot.Position).Magnitude
 	if dist > ATTACK_RANGE then return end
@@ -182,6 +225,11 @@ AttackTargetEvent.OnServerEvent:Connect(function(player, targetModel)
 	local penetration = character:GetAttribute("Penetration") or 0
 	local effectiveDef = math.max(0, targetDef - penetration)
 	damage = damage * (100 / (100 + effectiveDef))
+
+	local damageReduction = targetHumanoid:GetAttribute("DamageReduction") or 0
+	if damageReduction > 0 then
+		damage = damage * (1 - math.clamp(damageReduction, 0, 0.9))
+	end
 
 	-- 记录伤害来源（用于击杀归属）
 	targetModel:SetAttribute("LastDamagePlayer", player.Name)

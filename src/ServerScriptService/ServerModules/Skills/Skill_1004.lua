@@ -20,8 +20,11 @@ function LuxE.new(skillID)
 	return self
 end
 
-function LuxE:CanCast()
+function LuxE:CanCast(player)
 	if self.WaitingForRecast then
+		return true
+	end
+	if shared.TrainingManager and shared.TrainingManager.IsNoCooldown(player) then
 		return true
 	end
 	return (os.clock() - self.LastCastTime) >= self:GetFinalCD()

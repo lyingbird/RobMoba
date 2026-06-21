@@ -14,6 +14,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Theme = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("UITheme"))
 local HeroRegistry = require(ReplicatedStorage:WaitForChild("HeroRegistry"))
 local SkillRegistry = require(ReplicatedStorage:WaitForChild("SkillRegistry"))
+local MobileConfig = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("MobileConfig"))
 
 local UI_HeroSelect = {}
 
@@ -29,6 +30,7 @@ local miniAvatarLabel = nil
 local isLocked = false
 local isShowing = false       -- 全屏面板是否正在显示
 local onHeroConfirmed = nil   -- 英雄确认后的回调函数
+local onVisibilityChanged = nil -- REQ-021: 面板显示/隐藏通知回调
 
 -- REQ-007: Tab 筛选相关
 local currentTab = "All"
@@ -305,11 +307,12 @@ local function createMiniPanel()
 	miniPanelGui.ResetOnSpawn = false
 	miniPanelGui.Parent = playerGui
 
-	-- 小面板容器
+	-- REQ-024: 小面板容器 — 使用 Scale 定位(MobileConfig参数化)，避免与技能弧形区域重叠
+	-- 布局: 左侧小地图下方，远离右下角技能按钮
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
-	panel.Size = UDim2.new(0, 160, 0, 50)
-	panel.Position = UDim2.new(0, 10, 1, -130)
+	panel.Size = UDim2.new(MobileConfig.MINI_PANEL_WIDTH, 0, MobileConfig.MINI_PANEL_HEIGHT, 0)
+	panel.Position = UDim2.new(MobileConfig.MINI_PANEL_POS.X, 0, MobileConfig.MINI_PANEL_POS.Y, 0)
 	panel.BackgroundColor3 = Color3.fromRGB(20, 24, 36)
 	panel.BackgroundTransparency = 0.15
 	panel.BorderSizePixel = 0
@@ -323,10 +326,12 @@ local function createMiniPanel()
 	panelStroke.Transparency = 0.5
 	panelStroke.Parent = panel
 
-	-- 圆形头像
+	-- 圆形头像 — REQ-024: 改用 Scale 比例布局
 	local avatarBg = Instance.new("Frame")
-	avatarBg.Size = UDim2.new(0, 36, 0, 36)
-	avatarBg.Position = UDim2.new(0, 8, 0.5, -18)
+	avatarBg.Size = UDim2.new(0.55, 0, 0.55, 0)
+	avatarBg.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	avatarBg.Position = UDim2.new(0.04, 0, 0.5, 0)
+	avatarBg.AnchorPoint = Vector2.new(0, 0.5)
 	avatarBg.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	avatarBg.BorderSizePixel = 0
 	avatarBg.Parent = panel
@@ -337,31 +342,31 @@ local function createMiniPanel()
 	miniAvatarLabel.BackgroundTransparency = 1
 	miniAvatarLabel.Text = "?"
 	miniAvatarLabel.TextColor3 = Color3.new(1, 1, 1)
-	miniAvatarLabel.TextSize = 14
+	miniAvatarLabel.TextScaled = true
 	miniAvatarLabel.Font = Enum.Font.GothamBold
 	miniAvatarLabel.Parent = avatarBg
 
-	-- 英雄名字
+	-- 英雄名字 — REQ-024: 改用 Scale 比例布局
 	miniHeroLabel = Instance.new("TextLabel")
-	miniHeroLabel.Size = UDim2.new(0, 60, 0, 20)
-	miniHeroLabel.Position = UDim2.new(0, 50, 0, 6)
+	miniHeroLabel.Size = UDim2.new(0.45, 0, 0.35, 0)
+	miniHeroLabel.Position = UDim2.new(0.35, 0, 0.08, 0)
 	miniHeroLabel.BackgroundTransparency = 1
 	miniHeroLabel.Text = "未选择"
 	miniHeroLabel.TextColor3 = Theme.TEXT_WHITE
-	miniHeroLabel.TextSize = 13
+	miniHeroLabel.TextScaled = true
 	miniHeroLabel.TextXAlignment = Enum.TextXAlignment.Left
 	miniHeroLabel.Font = Enum.Font.GothamBold
 	miniHeroLabel.Parent = panel
 
-	-- "切换▼"按钮
+	-- "切换▼"按钮 — REQ-024: 改用 Scale 比例布局
 	local switchBtn = Instance.new("TextButton")
-	switchBtn.Size = UDim2.new(0, 56, 0, 18)
-	switchBtn.Position = UDim2.new(0, 50, 0, 27)
+	switchBtn.Size = UDim2.new(0.4, 0, 0.32, 0)
+	switchBtn.Position = UDim2.new(0.35, 0, 0.55, 0)
 	switchBtn.BackgroundColor3 = Color3.fromRGB(40, 90, 180)
 	switchBtn.BorderSizePixel = 0
 	switchBtn.Text = "切换 ▼"
 	switchBtn.TextColor3 = Color3.new(1, 1, 1)
-	switchBtn.TextSize = 11
+	switchBtn.TextScaled = true
 	switchBtn.Font = Enum.Font.GothamMedium
 	switchBtn.Parent = panel
 	Theme.corner(switchBtn, 6)
@@ -386,6 +391,11 @@ function UI_HeroSelect.Show(heroSelectTime)
 	isLocked = false
 	isShowing = true
 
+	-- REQ-021: 通知面板显示（摇杆等组件据此禁用）
+	if onVisibilityChanged then
+		onVisibilityChanged(true)
+	end
+
 	local isFirstPick = (confirmedHeroID == nil) -- 首次选择 vs 切换英雄
 
 	-- 创建 ScreenGui
@@ -396,6 +406,17 @@ function UI_HeroSelect.Show(heroSelectTime)
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = playerGui
 	Theme.autoScale(screenGui)
+
+	-- REQ-021: 防护 AC-009 — 如果 screenGui 被外部代码直接 Destroy 而非调用 Hide()
+	-- 确保 isShowing 和回调正确重置，防止摇杆永久禁用
+	screenGui.Destroying:Connect(function()
+		if isShowing then
+			isShowing = false
+			if onVisibilityChanged then
+				onVisibilityChanged(false)
+			end
+		end
+	end)
 
 	-- 背景遮罩
 	local bg = Instance.new("Frame")
@@ -704,6 +725,12 @@ function UI_HeroSelect.OnHeroConfirmed(callback)
 	onHeroConfirmed = callback
 end
 
+--- REQ-021: 设置面板显示/隐藏变更回调
+--- @param callback function(isVisible: boolean)
+function UI_HeroSelect.OnVisibilityChanged(callback)
+	onVisibilityChanged = callback
+end
+
 --- 获取锁定的英雄ID（首次选择兼容）
 function UI_HeroSelect.GetLockedHero()
 	return confirmedHeroID
@@ -734,9 +761,42 @@ function UI_HeroSelect.HideMiniPanel()
 	end
 end
 
+--- 重置英雄选择状态（回到大厅 avatar 模式时调用）
+function UI_HeroSelect.ResetSelection()
+	selectedHeroID = nil
+	confirmedHeroID = nil
+	heroCards = {}
+	isLocked = false
+	isShowing = false
+	lockBtn = nil
+	closeBtn = nil
+
+	if miniPanelGui then
+		miniPanelGui:Destroy()
+		miniPanelGui = nil
+	end
+	miniHeroLabel = nil
+	miniAvatarLabel = nil
+
+	if screenGui then
+		screenGui:Destroy()
+		screenGui = nil
+	end
+
+	if onVisibilityChanged then
+		onVisibilityChanged(false)
+	end
+end
+
 --- 关闭英雄选择界面（全屏面板）
 function UI_HeroSelect.Hide()
+
 	isShowing = false
+
+	-- REQ-021: 通知面板隐藏（摇杆等组件据此恢复）
+	if onVisibilityChanged then
+		onVisibilityChanged(false)
+	end
 
 	if screenGui then
 		-- 退出动画

@@ -1,7 +1,8 @@
 -- ==========================================
 -- LobbyManager.server.lua
--- 职责: 大厅状态管理、匹配队列、英雄切换
+-- 职责: 大厅状态管理、匹配队列、英雄切换、训练场模式进出
 -- REQ-004: 自由大厅 + 匹配对决
+-- REQ-002(重启): 游戏主流程重设计 — avatar漫游→模式选择→英雄选择
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +14,7 @@ task.wait(0.5)
 local MatchmakingEvent = ReplicatedStorage:WaitForChild("MatchmakingEvent", 10)
 local HeroSwapEvent = ReplicatedStorage:WaitForChild("HeroSwapEvent", 10)
 local DuelEvent = ReplicatedStorage:WaitForChild("DuelEvent", 10)
+local TrainingModeEvent = ReplicatedStorage:WaitForChild("TrainingModeEvent", 10)
 
 -- 英雄配置
 local HeroRegistry = require(ReplicatedStorage:WaitForChild("HeroRegistry"))
@@ -23,7 +25,7 @@ local PassiveSystem = require(ServerScriptService.ServerModules:WaitForChild("Pa
 local EnergySystem = require(ServerScriptService.ServerModules:WaitForChild("EnergySystem"))
 
 -- ========== 数据结构 ==========
-local playerStates = {}  -- { [Player] = "LOBBY" | "MATCHING" | "DUELING" }
+local playerStates = {}  -- { [Player] = "LOBBY" | "MATCHING" | "DUELING" | "TRAINING" }
 local playerHeroes = {}  -- { [Player] = heroId | nil }
 local matchQueue = {}    -- { Player, Player, ... } 有序数组
 
@@ -95,16 +97,22 @@ local function joinMatchmaking(player)
 
 			print(("[LobbyManager] Match found: %s vs %s"):format(p1.Name, p2.Name))
 
-			-- 创建对决 (等待 DuelManager 初始化)
-			task.delay(0.5, function()
-				if shared.DuelManager then
-					shared.DuelManager.CreateDuel(p1, p2)
-				else
-					warn("[LobbyManager] DuelManager not available!")
-					playerStates[p1] = "LOBBY"
-					playerStates[p2] = "LOBBY"
-				end
-			end)
+			-- 创建对决。DuelManager 会立即建立 playerDuelMap，避免 matched 后断线卡状态。
+			if shared.DuelManager then
+				shared.DuelManager.CreateDuel(p1, p2)
+			else
+				warn("[LobbyManager] DuelManager not available!")
+				playerStates[p1] = "LOBBY"
+				playerStates[p2] = "LOBBY"
+				MatchmakingEvent:FireClient(p1, {
+					status = "cancelled",
+					message = "DuelManager unavailable",
+				})
+				MatchmakingEvent:FireClient(p2, {
+					status = "cancelled",
+					message = "DuelManager unavailable",
+				})
+			end
 
 			broadcastQueueSize()
 		end
@@ -117,12 +125,26 @@ local function leaveMatchmaking(player)
 	playerStates[player] = "LOBBY"
 	removeFromQueue(player)
 
+	-- REQ-002: 取消匹配时恢复 avatar（清除英雄选择）
+	playerHeroes[player] = nil
+	player:SetAttribute("SelectedHero", nil)
+	if player.Character then
+		player.Character:SetAttribute("HeroId", nil)
+	end
+	PassiveSystem:UnregisterPassives(player)
+	EnergySystem:RemovePlayer(player)
+	task.delay(0.5, function()
+		if player and player.Parent then
+			player:LoadCharacter()
+		end
+	end)
+
 	MatchmakingEvent:FireClient(player, {
 		status = "cancelled",
 	})
 
 	broadcastQueueSize()
-	print(("[LobbyManager] %s left matchmaking"):format(player.Name))
+	print(("[LobbyManager] %s left matchmaking, restoring avatar"):format(player.Name))
 end
 
 -- ========== 英雄切换 ==========
@@ -149,6 +171,16 @@ local function onHeroSwap(player, data)
 		return
 	end
 
+	-- 训练中不能切换
+	if playerStates[player] == "TRAINING" then
+		HeroSwapEvent:FireClient(player, {
+			success = false,
+			heroId = data.heroId,
+			message = "训练中无法切换英雄，请先退出训练场",
+		})
+		return
+	end
+
 	-- 验证 heroId 合法
 	if not HeroRegistry[data.heroId] then
 		HeroSwapEvent:FireClient(player, {
@@ -160,6 +192,10 @@ local function onHeroSwap(player, data)
 	end
 
 	playerHeroes[player] = data.heroId
+	player:SetAttribute("SelectedHero", data.heroId)
+	if player.Character then
+		player.Character:SetAttribute("HeroId", data.heroId)
+	end
 
 	-- REQ-007: 被动 + 能量系统注册
 	PassiveSystem:UnregisterPassives(player)
@@ -172,6 +208,75 @@ local function onHeroSwap(player, data)
 	})
 
 	print(("[LobbyManager] %s switched to %s"):format(player.Name, data.heroId))
+end
+
+-- ========== REQ-002: 训练场模式进出 ==========
+local function enterTraining(player)
+	if playerStates[player] ~= "LOBBY" then
+		if TrainingModeEvent then
+			TrainingModeEvent:FireClient(player, { status = "error", message = "只能在大厅进入训练场" })
+		end
+		return
+	end
+
+	if not playerHeroes[player] then
+		if TrainingModeEvent then
+			TrainingModeEvent:FireClient(player, { status = "error", message = "请先选择英雄" })
+		end
+		return
+	end
+
+	playerStates[player] = "TRAINING"
+
+	-- REQ-002: sync training panel visibility
+	if shared.TrainingManager then
+		shared.TrainingManager.SyncState(player)
+	end
+
+	if TrainingModeEvent then
+		TrainingModeEvent:FireClient(player, { status = "entered" })
+	end
+
+	print(("[LobbyManager] %s entered TRAINING mode with hero %s"):format(player.Name, playerHeroes[player]))
+end
+
+local function leaveTraining(player)
+	if playerStates[player] ~= "TRAINING" then return end
+
+	-- 先恢复到大厅状态，避免训练状态清理过程中发出 panelVisible=true 的过期同步包
+	playerStates[player] = "LOBBY"
+	playerHeroes[player] = nil
+	player:SetAttribute("SelectedHero", nil)
+	if player.Character then
+		player.Character:SetAttribute("HeroId", nil)
+	end
+
+	-- 清理训练状态
+	if shared.TrainingManager then
+		shared.TrainingManager.ResetTrainingState(player)
+	end
+
+	-- 清理被动 + 能量
+	PassiveSystem:UnregisterPassives(player)
+	EnergySystem:RemovePlayer(player)
+
+	-- REQ-002: sync training panel visibility (hide)
+	if shared.TrainingManager then
+		shared.TrainingManager.SyncState(player)
+	end
+
+	-- 恢复 avatar
+	task.delay(0.5, function()
+		if player and player.Parent then
+			player:LoadCharacter()
+		end
+	end)
+
+	if TrainingModeEvent then
+		TrainingModeEvent:FireClient(player, { status = "left" })
+	end
+
+	print(("[LobbyManager] %s left TRAINING mode, restoring avatar"):format(player.Name))
 end
 
 -- ========== RemoteEvent 监听 ==========
@@ -193,6 +298,19 @@ if HeroSwapEvent then
 	end)
 end
 
+-- REQ-002: 训练场模式进出事件
+if TrainingModeEvent then
+	TrainingModeEvent.OnServerEvent:Connect(function(player, data)
+		if not data or not data.action then return end
+
+		if data.action == "enter" then
+			enterTraining(player)
+		elseif data.action == "leave" then
+			leaveTraining(player)
+		end
+	end)
+end
+
 -- ========== 玩家加入/离开 ==========
 local function onPlayerAdded(player)
 	playerStates[player] = "LOBBY"
@@ -210,6 +328,11 @@ local function onPlayerRemoving(player)
 	-- 通知 DuelManager 处理掉线
 	if playerStates[player] == "DUELING" and shared.DuelManager then
 		shared.DuelManager.OnPlayerDisconnect(player)
+	end
+
+	-- 训练中掉线清理
+	if playerStates[player] == "TRAINING" and shared.TrainingManager then
+		shared.TrainingManager.ResetTrainingState(player)
 	end
 
 	-- REQ-007: 清理被动 + 能量
@@ -306,6 +429,20 @@ end
 function LobbyAPI.SetPlayerState(player, state)
 	playerStates[player] = state
 end
+
+--- 清除玩家英雄选择（对决结束恢复avatar时调用）
+function LobbyAPI.ClearPlayerHero(player)
+	playerHeroes[player] = nil
+	player:SetAttribute("SelectedHero", nil)
+	if player.Character then
+		player.Character:SetAttribute("HeroId", nil)
+	end
+	PassiveSystem:UnregisterPassives(player)
+	EnergySystem:RemovePlayer(player)
+end
+
+LobbyAPI.EnterTraining = enterTraining
+LobbyAPI.LeaveTraining = leaveTraining
 
 shared.LobbyManager = LobbyAPI
 

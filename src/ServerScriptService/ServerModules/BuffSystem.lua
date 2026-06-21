@@ -134,10 +134,7 @@ function BuffSystem:_expireBuff(target, buff)
 
 	-- 移除 Shield
 	if effectCfg.Type == "Shield" then
-		local humanoid = target:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid:SetAttribute("ShieldAmount", 0)
-		end
+		executor:_revertShield(target, buff)
 	end
 end
 

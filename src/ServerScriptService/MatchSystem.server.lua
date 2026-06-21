@@ -15,14 +15,9 @@ local RESPAWN_TIME = 5           -- 死亡后重生倒计时（秒）
 local redTeam = Teams:WaitForChild("RedTeam", 10)
 local blueTeam = Teams:WaitForChild("BlueTeam", 10)
 
--- ========== 创建 RemoteEvents ==========
-local MatchStateEvent = Instance.new("RemoteEvent")
-MatchStateEvent.Name = "MatchStateEvent"
-MatchStateEvent.Parent = ReplicatedStorage
-
-local DeathTimerEvent = Instance.new("RemoteEvent")
-DeathTimerEvent.Name = "DeathTimerEvent"
-DeathTimerEvent.Parent = ReplicatedStorage
+-- ========== RemoteEvents ==========
+local MatchStateEvent = ReplicatedStorage:WaitForChild("MatchStateEvent", 10)
+local DeathTimerEvent = ReplicatedStorage:WaitForChild("DeathTimerEvent", 10)
 
 -- ========== 竞技场出生点（与 DuelManager 保持一致） ==========
 local ARENA_CENTER = Vector3.new(0, 62, 0)

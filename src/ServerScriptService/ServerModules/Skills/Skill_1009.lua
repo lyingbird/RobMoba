@@ -96,7 +96,8 @@ function HouYiQ:OnInstantCast(player, targetPos)
 				-- 追踪敌人
 				local enemyRoot = nearestEnemy:FindFirstChild("HumanoidRootPart")
 				if enemyRoot then
-					local dir = (enemyRoot.Position - s.part.Position).Unit
+					local offset = enemyRoot.Position - s.part.Position
+					local dir = offset.Magnitude >= 0.001 and offset.Unit or Vector3.new(0, 0, -1)
 					local newPos = s.part.Position + dir * 40 * dt
 					s.part.CFrame = CFrame.lookAt(newPos, newPos + dir)
 

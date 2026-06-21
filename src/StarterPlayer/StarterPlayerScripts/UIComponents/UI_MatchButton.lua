@@ -38,7 +38,9 @@ function UI_MatchButton.Init()
 	screenGui.Name = "MatchButtonScreen"
 	screenGui.DisplayOrder = 5
 	screenGui.ResetOnSpawn = false
+	screenGui.Enabled = false -- REQ-002: 仅在 PVP 模式确认英雄后显示
 	screenGui.Parent = playerGui
+
 
 	-- 主按钮
 	mainButton = Instance.new("TextButton")

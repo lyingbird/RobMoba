@@ -6,12 +6,14 @@
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")  -- REQ-025: 拖拽功能
 
 local player = Players.LocalPlayer
 
 local TrainingEvent = ReplicatedStorage:WaitForChild("TrainingEvent", 10)
 local TrainingSyncEvent = ReplicatedStorage:WaitForChild("TrainingSyncEvent", 10)
 local MatchmakingEvent = ReplicatedStorage:FindFirstChild("MatchmakingEvent")
+local TrainingModeEvent = ReplicatedStorage:WaitForChild("TrainingModeEvent", 10)  -- REQ-002: 训练场模式进入/退出事件
 
 local UI_TrainingPanel = {}
 
@@ -36,7 +38,7 @@ local panelExpanded = true
 local cdEnabled = false
 local dummyCount = 0
 local currentLevel = 1
-local panelVisible = true
+local panelVisible = false  -- REQ-002: 默认隐藏，只在训练场模式显示
 
 -- ========== GUI 引用 ==========
 local screenGui, panelFrame, collapsedIcon
@@ -104,11 +106,12 @@ end
 
 -- ========== 创建 GUI ==========
 local function createPanel()
-	screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "TrainingPanel"
-	screenGui.DisplayOrder = 5
-	screenGui.ResetOnSpawn = false
-	screenGui.Parent = player.PlayerGui
+screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TrainingPanel"
+screenGui.DisplayOrder = 100  -- REQ-025: 最高UI优先级
+screenGui.ResetOnSpawn = false
+screenGui.Enabled = false  -- REQ-002: 默认禁用，只在训练场模式显示
+screenGui.Parent = player.PlayerGui
 
 	-- 展开面板
 	panelFrame = Instance.new("Frame")
@@ -412,6 +415,82 @@ local function createPanel()
 		collapsedIcon.Visible = false
 	end)
 
+	-- ========== REQ-025: 拖拽功能 ==========
+	-- 标题栏拖拽 → 移动展开面板
+	do
+		local dragging = false
+		local dragStartPos = nil
+		local dragStartFramePos = nil
+
+		titleBar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch
+				or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStartPos = input.Position
+				dragStartFramePos = panelFrame.Position
+			end
+		end)
+
+		titleBar.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch
+				or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+
+		UserInputService.InputChanged:Connect(function(input)
+			if not dragging then return end
+			if input.UserInputType == Enum.UserInputType.Touch
+				or input.UserInputType == Enum.UserInputType.MouseMovement then
+				local delta = input.Position - dragStartPos
+				local viewportSize = workspace.CurrentCamera.ViewportSize
+				local newX = dragStartFramePos.X.Offset + delta.X
+				local newY = dragStartFramePos.Y.Offset + delta.Y
+				-- 限制在屏幕范围内
+				newX = math.clamp(newX, 0, viewportSize.X - panelFrame.AbsoluteSize.X)
+				newY = math.clamp(newY, 0, viewportSize.Y - panelFrame.AbsoluteSize.Y)
+				panelFrame.Position = UDim2.new(0, newX, 0, newY)
+			end
+		end)
+	end
+
+	-- 折叠图标拖拽
+	do
+		local dragging = false
+		local dragStartPos = nil
+		local dragStartIconPos = nil
+
+		collapsedIcon.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch
+				or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStartPos = input.Position
+				dragStartIconPos = collapsedIcon.Position
+			end
+		end)
+
+		collapsedIcon.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch
+				or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+
+		UserInputService.InputChanged:Connect(function(input)
+			if not dragging then return end
+			if input.UserInputType == Enum.UserInputType.Touch
+				or input.UserInputType == Enum.UserInputType.MouseMovement then
+				local delta = input.Position - dragStartPos
+				local viewportSize = workspace.CurrentCamera.ViewportSize
+				local newX = dragStartIconPos.X.Offset + delta.X
+				local newY = dragStartIconPos.Y.Offset + delta.Y
+				newX = math.clamp(newX, 0, viewportSize.X - collapsedIcon.AbsoluteSize.X)
+				newY = math.clamp(newY, 0, viewportSize.Y - collapsedIcon.AbsoluteSize.Y)
+				collapsedIcon.Position = UDim2.new(0, newX, 0, newY)
+			end
+		end)
+	end
+
 	updateToggleVisual()
 end
 
@@ -481,7 +560,14 @@ local function checkHeroSelected()
 end
 
 -- ========== 初始化 ==========
-function UI_TrainingPanel.Init()
+function UI_TrainingPanel.Init(initialVisible: boolean?)
+	if screenGui then
+		if initialVisible ~= nil then
+			onSyncState({ panelVisible = initialVisible })
+		end
+		return
+	end
+
 	createPanel()
 
 	-- 监听服务端同步
@@ -497,8 +583,8 @@ function UI_TrainingPanel.Init()
 				-- 进入匹配/对决 → 隐藏面板
 				if screenGui then screenGui.Enabled = false end
 			elseif data.status == "cancelled" then
-				-- 取消匹配 → 显示面板
-				if screenGui then screenGui.Enabled = true end
+				-- REQ-002: 取消匹配 → 仅在训练场模式下显示面板
+				if screenGui and panelVisible then screenGui.Enabled = true end
 			end
 		end)
 	end
@@ -515,6 +601,31 @@ function UI_TrainingPanel.Init()
 			end
 		end)
 	end
+
+	-- REQ-002: 监听训练场模式事件
+	if TrainingModeEvent then
+		TrainingModeEvent.OnClientEvent:Connect(function(data)
+			if not data then return end
+
+			if data.status == "entered" then
+				-- 进入训练场模式 → 显示面板
+				panelVisible = true
+				if screenGui then screenGui.Enabled = true end
+			elseif data.status == "left" then
+				-- 退出训练场模式 → 隐藏面板
+				panelVisible = false
+				if screenGui then screenGui.Enabled = false end
+			end
+		end)
+	end
+
+	if initialVisible ~= nil then
+		onSyncState({ panelVisible = initialVisible })
+	end
+end
+
+function UI_TrainingPanel.SetVisible(visible: boolean)
+	onSyncState({ panelVisible = visible })
 end
 
 return UI_TrainingPanel

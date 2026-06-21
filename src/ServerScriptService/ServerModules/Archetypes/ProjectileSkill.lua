@@ -17,6 +17,21 @@ function ProjectileSkill.new(skillID)
 	return setmetatable(BaseSkill.new(skillID), ProjectileSkill)
 end
 
+local function getSafeFlatDirection(fromPos, targetPos, fallbackCFrame)
+	local flatOffset = Vector3.new(targetPos.X - fromPos.X, 0, targetPos.Z - fromPos.Z)
+	if flatOffset.Magnitude >= 0.001 then
+		return flatOffset.Unit
+	end
+
+	local fallback = fallbackCFrame and fallbackCFrame.LookVector or Vector3.new(0, 0, -1)
+	fallback = Vector3.new(fallback.X, 0, fallback.Z)
+	if fallback.Magnitude >= 0.001 then
+		return fallback.Unit
+	end
+
+	return Vector3.new(0, 0, -1)
+end
+
 --- 子类必须实现: 返回弹道配置
 function ProjectileSkill:GetProjectileConfig()
 	return {
@@ -78,7 +93,7 @@ function ProjectileSkill:OnCast(player, targetPos)
 	local maxRange = self.Config.Range or self.Config.BaseRange or 50
 
 	local startPos = rootPart.Position
-	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
+	local direction = getSafeFlatDirection(startPos, targetPos, rootPart.CFrame)
 
 	local bullet = self:_createBullet(config, startPos, direction)
 

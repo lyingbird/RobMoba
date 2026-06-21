@@ -122,46 +122,51 @@ function UI_Minimap.Init(parentFrame, mapBounds)
 		mapRangeZ = 200
 	end
 
-	-- 小地图容器
+	-- 小地图容器 (REQ-016: 增大+视觉增强)
 	minimapFrame = Instance.new("Frame")
 	minimapFrame.Name = "Minimap"
 	minimapFrame.AnchorPoint = Vector2.new(0, 0)
 	minimapFrame.Size = UDim2.new(MobileConfig.MINIMAP_SIZE, 0, MobileConfig.MINIMAP_SIZE, 0)
-	minimapFrame.Position = UDim2.new(0.01, 0, 0.12, 0) -- 左上角, 顶部信息栏下方
-	minimapFrame.BackgroundColor3 = Color3.fromRGB(30, 35, 40)
-	minimapFrame.BackgroundTransparency = 0.2
+	minimapFrame.SizeConstraint = Enum.SizeConstraint.RelativeYY  -- REQ-016: 确保正方形
+	minimapFrame.Position = UDim2.new(MobileConfig.MINIMAP_POS_X, 0, MobileConfig.MINIMAP_POS_Y, 0)
+	minimapFrame.BackgroundColor3 = Color3.fromRGB(20, 28, 35)   -- REQ-016: 深色背景
+	minimapFrame.BackgroundTransparency = 0.15                     -- REQ-016: 0.2→0.15 更不透明
 	minimapFrame.BorderSizePixel = 0
 	minimapFrame.ZIndex = 5
 	minimapFrame.ClipsDescendants = true
 	minimapFrame.Parent = parentFrame
 
-	-- 白色边框
+	-- REQ-016: 边框增强 — 使用UIStroke
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(180, 180, 180)
-	stroke.Thickness = 1
+	stroke.Color = Color3.fromRGB(160, 170, 185)   -- REQ-016: 更亮的边框色
+	stroke.Thickness = 1.5                           -- REQ-016: 1→1.5
+	stroke.Transparency = 0.2
 	stroke.Parent = minimapFrame
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 4)
+	corner.CornerRadius = UDim.new(0, 6)            -- REQ-016: 4→6 稍大圆角
 	corner.Parent = minimapFrame
 
-	-- 纵横分割线 (简易地图参考线)
+	-- REQ-025: 网格线已隐藏(无实际功能)
+	-- 保留元素便于未来启用，但默认不显示
 	local hLine = Instance.new("Frame")
 	hLine.Name = "HLine"
 	hLine.Size = UDim2.new(1, 0, 0, 1)
 	hLine.Position = UDim2.new(0, 0, 0.5, 0)
-	hLine.BackgroundColor3 = Color3.fromRGB(60, 65, 70)
+	hLine.BackgroundColor3 = Color3.fromRGB(80, 90, 100)
 	hLine.BorderSizePixel = 0
 	hLine.ZIndex = 6
+	hLine.Visible = false  -- REQ-025: 隐藏
 	hLine.Parent = minimapFrame
 
 	local vLine = Instance.new("Frame")
 	vLine.Name = "VLine"
 	vLine.Size = UDim2.new(0, 1, 1, 0)
 	vLine.Position = UDim2.new(0.5, 0, 0, 0)
-	vLine.BackgroundColor3 = Color3.fromRGB(60, 65, 70)
+	vLine.BackgroundColor3 = Color3.fromRGB(80, 90, 100)
 	vLine.BorderSizePixel = 0
 	vLine.ZIndex = 6
+	vLine.Visible = false  -- REQ-025: 隐藏
 	vLine.Parent = minimapFrame
 
 	-- 标记圆点

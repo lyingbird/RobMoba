@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local LevelConfig = require(ReplicatedStorage:WaitForChild("LevelConfig"))
 
 -- 等待 RemoteEventInit 创建完成
 task.wait(0.5)
@@ -57,9 +58,14 @@ local function getPlayerState(player)
 	return "LOBBY"
 end
 
-local function isInLobby(player)
-	return getPlayerState(player) == "LOBBY"
+local function isInTrainingMode(player)
+	return getPlayerState(player) == "TRAINING"
 end
+
+local function isFiniteNumber(value)
+	return typeof(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
 
 local function rateLimitCheck(player)
 	local now = os.clock()
@@ -79,13 +85,15 @@ local function syncState(player)
 		noCooldown = state.noCooldown or false,
 		dummyCount = #playerDummies,
 		level = player.Character and player.Character:GetAttribute("Level") or 1,
-		panelVisible = isInLobby(player),
+		panelVisible = isInTrainingMode(player),
 	})
+
 end
 
 -- ========== F1: 开关技能冷却 ==========
 local function toggleCD(player, enabled)
-	if not isInLobby(player) then return end
+	if not isInTrainingMode(player) then return end
+
 
 	local state = trainingStates[player]
 	if not state then return end
@@ -104,7 +112,8 @@ end
 
 -- ========== F2: 刷新HP/MP ==========
 local function refreshHP(player)
-	if not isInLobby(player) then return end
+	if not isInTrainingMode(player) then return end
+
 
 	local character = player.Character
 	if not character then return end
@@ -279,7 +288,8 @@ local function createDummyModel(position)
 end
 
 local function spawnDummy(player)
-	if not isInLobby(player) then return end
+	if not isInTrainingMode(player) then return end
+
 
 	local character = player.Character
 	if not character then return end
@@ -324,22 +334,25 @@ end
 
 -- ========== F4: 等级调整 ==========
 local function setLevel(player, level)
-	if not isInLobby(player) then return end
-	if typeof(level) ~= "number" then return end
+	if not isInTrainingMode(player) then return end
+
+	if not isFiniteNumber(level) then return end
+	local clampedLevel = math.clamp(math.floor(level), 1, LevelConfig.MaxLevel or 18)
 
 	local stats = getStatsManager()
-	stats.SetLevel(player, level)
+	stats.SetLevel(player, clampedLevel)
 
 	-- 能量系统同步等级
 	local energy = getEnergySystem()
-	energy:OnLevelUp(player, level)
+	energy:OnLevelUp(player, clampedLevel)
 
 	syncState(player)
 end
 
 -- ========== F5: 重置位置 ==========
 local function resetPosition(player)
-	if not isInLobby(player) then return end
+	if not isInTrainingMode(player) then return end
+
 
 	local character = player.Character
 	if not character then return end
@@ -377,8 +390,9 @@ local function onTrainingAction(player, data)
 	if not data or typeof(data) ~= "table" then return end
 	if not data.action or typeof(data.action) ~= "string" then return end
 
-	-- LOBBY 状态验证
-	if not isInLobby(player) then return end
+	-- TRAINING 状态验证
+	if not isInTrainingMode(player) then return end
+
 
 	-- Rate limit
 	if not rateLimitCheck(player) then return end
@@ -450,8 +464,9 @@ task.spawn(function()
 		-- 收集需要重置的玩家（避免遍历中修改表）
 		local toReset = {}
 		for player, state in pairs(trainingStates) do
-			if player.Parent and not isInLobby(player) then
-				-- 玩家离开 LOBBY，检查是否有训练状态或假人需要清理
+			if player.Parent and not isInTrainingMode(player) then
+				-- 玩家离开 TRAINING，检查是否有训练状态或假人需要清理
+
 				local hasDummies = dummies[player] and #dummies[player] > 0
 				if state.noCooldown or state.noCost or hasDummies then
 					table.insert(toReset, player)
@@ -467,16 +482,22 @@ end)
 -- ========== shared API ==========
 shared.TrainingManager = {
 	IsNoCooldown = function(player)
+		if not isInTrainingMode(player) then return false end
 		local state = trainingStates[player]
 		return state and state.noCooldown == true
 	end,
 	IsNoCost = function(player)
+		if not isInTrainingMode(player) then return false end
 		local state = trainingStates[player]
 		return state and state.noCost == true
+	end,
+	SyncState = function(player)
+		syncState(player)
 	end,
 	ResetTrainingState = function(player)
 		resetTrainingState(player)
 	end,
 }
+
 
 print("[TrainingManager] Training ground system initialized!")

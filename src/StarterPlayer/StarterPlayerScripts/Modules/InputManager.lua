@@ -58,6 +58,9 @@ local function findTargetModel(part)
 		if current.Parent == enemiesFolder then
 			return current
 		end
+		if current:IsA("Model") and current:GetAttribute("IsTrainingDummy") == true then
+			return current
+		end
 		-- 检查是否为其他玩家的角色（排除自己）
 		if current:IsA("Model") then
 			for _, otherPlayer in ipairs(Players:GetPlayers()) do
@@ -579,8 +582,19 @@ function InputManager.Init()
 				local targetPos = mouse.Hit.Position
 				local flatTarget = Vector3.new(targetPos.X, rootPos.Y, targetPos.Z)
 				local dist = (flatTarget - rootPos).Magnitude
-				if dist < 0.1 then dist = 0.1 end
-				local direction = (flatTarget - rootPos).Unit
+				local direction
+				if dist < 0.1 then
+					dist = 0.1
+					local lookDir = character.HumanoidRootPart.CFrame.LookVector
+					direction = Vector3.new(lookDir.X, 0, lookDir.Z)
+					if direction.Magnitude < 0.001 then
+						direction = Vector3.new(0, 0, -1)
+					else
+						direction = direction.Unit
+					end
+				else
+					direction = (flatTarget - rootPos).Unit
+				end
 
 				local indicType, skillRange, indicSize, maxRange = getSkillIndicatorInfo(activeSkillKey)
 				local onCD = checkSkillCD(activeSkillKey)

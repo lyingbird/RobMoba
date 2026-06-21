@@ -16,6 +16,21 @@ function LuxR.new(skillID)
 	return setmetatable(BeamSkill.new(skillID), LuxR)
 end
 
+local function getSafeFlatDirection(fromPos, targetPos, fallbackCFrame)
+	local flatOffset = Vector3.new(targetPos.X - fromPos.X, 0, targetPos.Z - fromPos.Z)
+	if flatOffset.Magnitude >= 0.001 then
+		return flatOffset.Unit
+	end
+
+	local fallback = fallbackCFrame and fallbackCFrame.LookVector or Vector3.new(0, 0, -1)
+	fallback = Vector3.new(fallback.X, 0, fallback.Z)
+	if fallback.Magnitude >= 0.001 then
+		return fallback.Unit
+	end
+
+	return Vector3.new(0, 0, -1)
+end
+
 -- VFX: 蓄力
 local function createChargeVFX(rootPart, direction, duration)
 	local chargeOrb = Instance.new("Part")
@@ -73,7 +88,7 @@ function LuxR:OnCast(player, targetPos)
 
 	local config = self:GetBeamConfig()
 	local startPos = rootPart.Position
-	local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
+	local direction = getSafeFlatDirection(startPos, targetPos, rootPart.CFrame)
 
 	-- 蓄力 VFX
 	local chargeOrb = createChargeVFX(rootPart, direction, config.CastTime)

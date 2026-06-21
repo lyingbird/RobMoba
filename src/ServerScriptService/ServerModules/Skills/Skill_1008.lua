@@ -14,6 +14,17 @@ local BeamSkill = require(ServerScriptService:WaitForChild("ServerModules"):Wait
 local AngelaR = setmetatable({}, BeamSkill)
 AngelaR.__index = AngelaR
 
+local function isFiniteNumber(value)
+	return typeof(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
+local function isFiniteVector3(value)
+	return typeof(value) == "Vector3"
+		and isFiniteNumber(value.X)
+		and isFiniteNumber(value.Y)
+		and isFiniteNumber(value.Z)
+end
+
 function AngelaR.new(skillID)
 	return setmetatable(BeamSkill.new(skillID), AngelaR)
 end
@@ -108,7 +119,7 @@ function AngelaR:OnCast(player, targetPos)
 	if dirEvent then
 		vfxDirConn = dirEvent.OnServerEvent:Connect(function(sender, newTargetPos)
 			if sender ~= player then return end
-			if typeof(newTargetPos) ~= "Vector3" then return end
+			if not isFiniteVector3(newTargetPos) then return end
 			vfxAngle = math.atan2(newTargetPos.X - rootPart.Position.X, newTargetPos.Z - rootPart.Position.Z)
 		end)
 	end

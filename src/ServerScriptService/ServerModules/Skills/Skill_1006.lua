@@ -19,6 +19,21 @@ function AngelaQ.new(skillID)
 	return setmetatable(ProjectileSkill.new(skillID), AngelaQ)
 end
 
+local function getSafeFlatDirection(fromPos, targetPos, fallbackCFrame)
+	local flatOffset = Vector3.new(targetPos.X - fromPos.X, 0, targetPos.Z - fromPos.Z)
+	if flatOffset.Magnitude >= 0.001 then
+		return flatOffset.Unit
+	end
+
+	local fallback = fallbackCFrame and fallbackCFrame.LookVector or Vector3.new(0, 0, -1)
+	fallback = Vector3.new(fallback.X, 0, fallback.Z)
+	if fallback.Magnitude >= 0.001 then
+		return fallback.Unit
+	end
+
+	return Vector3.new(0, 0, -1)
+end
+
 -- ===== VFX =====
 
 local function playHitVFX(position)
@@ -79,8 +94,13 @@ function AngelaQ:OnCast(player, targetPos)
 
 	local startPos = rootPart.Position
 	local flatTarget = Vector3.new(targetPos.X, startPos.Y, targetPos.Z)
-	local baseDirection = (flatTarget - startPos).Unit
-	local rightDir = baseDirection:Cross(Vector3.new(0, 1, 0)).Unit
+	local baseDirection = getSafeFlatDirection(startPos, flatTarget, rootPart.CFrame)
+	local rightDir = baseDirection:Cross(Vector3.new(0, 1, 0))
+	if rightDir.Magnitude >= 0.001 then
+		rightDir = rightDir.Unit
+	else
+		rightDir = Vector3.new(1, 0, 0)
+	end
 
 	local SPREAD_WIDTH = self.Config.SpreadWidth or 8
 	local SPAWN_FORWARD = 3
@@ -89,7 +109,7 @@ function AngelaQ:OnCast(player, targetPos)
 		local lateralOffset = (i - (bulletCount + 1) / 2) * (SPREAD_WIDTH / (bulletCount - 1))
 		local spawnPos = startPos + baseDirection * SPAWN_FORWARD + rightDir * lateralOffset
 		local toTarget = (flatTarget - spawnPos)
-		local dir = toTarget.Unit
+		local dir = toTarget.Magnitude >= 0.001 and toTarget.Unit or baseDirection
 
 		-- 创建火球 (Anchored=true, Heartbeat移动)
 		local fireball = Instance.new("Part")

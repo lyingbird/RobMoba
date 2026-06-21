@@ -28,12 +28,13 @@ function MovementManager.Init(character)
 	end
 
 	-- RenderStepped: 摇杆持续方向移动
+	-- REQ-022: relativeToCamera=false, 方向已在 MobileInputManager 中基于摄像机 CFrame 变换
 	directMoveConnection = RunService.RenderStepped:Connect(function()
 		if moveMode == "DIRECT" and cachedHumanoid and cachedHumanoid.Parent then
 			if moveDirection ~= Vector3.zero then
-				cachedHumanoid:Move(moveDirection)
+				cachedHumanoid:Move(moveDirection, false)
 			else
-				cachedHumanoid:Move(Vector3.zero)
+				cachedHumanoid:Move(Vector3.zero, false)
 			end
 		end
 	end)

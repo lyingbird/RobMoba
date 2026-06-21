@@ -13,6 +13,7 @@ return {
 		Range = 40,
 		EnergyCost = 0,
 		CastRule = "Direction",
+		aimType = "line",
 		ArchetypeType = "Projectile",
 		-- Archetype 参数
 		Speed = 60,
@@ -36,6 +37,7 @@ return {
 		Range = 50,
 		EnergyCost = 50,
 		CastRule = "Direction",
+		aimType = "line",
 		ArchetypeType = "Projectile",
 		-- Archetype 参数
 		Speed = 55,
@@ -108,6 +110,8 @@ return {
 		Range = 200,
 		EnergyCost = 100,
 		CastRule = "Direction",
+		aimType = "rect",
+		indicatorWidth = 6,
 		ArchetypeType = "Beam",
 		IsUltimate = true,
 		-- Archetype 参数

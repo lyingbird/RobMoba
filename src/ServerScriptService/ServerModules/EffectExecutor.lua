@@ -1,20 +1,21 @@
--- ==========================================
--- EffectExecutor: 效果执行器
--- 6 种效果类型的执行和恢复逻辑
--- 由 BuffSystem 调用，不直接对外暴露
--- 运行位置: 服务端 (ServerScriptService)
--- ==========================================
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EnergyConfig = require(ReplicatedStorage:WaitForChild("EnergyConfig"))
+local MovementState = require(script.Parent:WaitForChild("MovementState"))
 
 local EffectExecutor = {}
 
--- REQ-007: 延迟加载 PassiveSystem + EnergySystem (避免循环依赖)
 local PassiveSystem = nil
 local EnergySystem = nil
+
+local actionBlocks = setmetatable({}, { __mode = "k" })
+local anchorBlocks = setmetatable({}, { __mode = "k" })
+local attributeMods = setmetatable({}, { __mode = "k" })
+local propertyMods = setmetatable({}, { __mode = "k" })
+local shieldMods = setmetatable({}, { __mode = "k" })
+
 local function getPassiveSystem()
 	if not PassiveSystem then
 		local ServerScriptService = game:GetService("ServerScriptService")
@@ -22,6 +23,7 @@ local function getPassiveSystem()
 	end
 	return PassiveSystem
 end
+
 local function getEnergySystem()
 	if not EnergySystem then
 		local ServerScriptService = game:GetService("ServerScriptService")
@@ -30,33 +32,335 @@ local function getEnergySystem()
 	return EnergySystem
 end
 
--- ========== 内部状态追踪 ==========
--- 存储 CC/StatMod 效果的原始值，用于到期恢复
--- _originalValues[characterModel][effectKey] = originalValue
-local _originalValues = {}
-
-local function getOriginals(target)
-	if not _originalValues[target] then
-		_originalValues[target] = {}
+local function countEntries(map)
+	local count = 0
+	for _ in pairs(map) do
+		count = count + 1
 	end
-	return _originalValues[target]
+	return count
 end
 
--- ========== 分发入口 ==========
+local function getBuffToken(buff, suffix)
+	local base = buff and buff.instanceId or "effect"
+	return tostring(base) .. "_" .. suffix
+end
 
---- 执行效果（由 BuffSystem:ApplyEffect 调用）
--- @param source Model 施加者角色
--- @param target Model 目标角色
--- @param effectConfig table EffectConfig 条目
--- @param buff table BuffInstance（可选，用于追踪）
+local function getActionState(humanoid)
+	local state = actionBlocks[humanoid]
+	if not state then
+		state = {
+			cast = {},
+			autoAttack = {},
+		}
+		actionBlocks[humanoid] = state
+	end
+	return state
+end
+
+local function setActionBlock(humanoid, bucketName, countAttr, allowedAttr, token, enabled)
+	if not humanoid or token == nil then return end
+
+	local state = actionBlocks[humanoid]
+	if not enabled and not state then return end
+	if not state then
+		state = getActionState(humanoid)
+	end
+
+	local bucket = state[bucketName]
+	if enabled then
+		bucket[token] = true
+	else
+		if not bucket[token] then return end
+		bucket[token] = nil
+	end
+
+	local count = countEntries(bucket)
+	humanoid:SetAttribute(countAttr, count)
+	humanoid:SetAttribute(allowedAttr, count <= 0)
+end
+
+local function pushCastBlock(humanoid, token)
+	setActionBlock(humanoid, "cast", "CanCastSkillBlockCount", "CanCastSkill", token, true)
+end
+
+local function popCastBlock(humanoid, token)
+	setActionBlock(humanoid, "cast", "CanCastSkillBlockCount", "CanCastSkill", token, false)
+end
+
+local function pushAutoAttackBlock(humanoid, token)
+	setActionBlock(humanoid, "autoAttack", "CanAutoAttackBlockCount", "CanAutoAttack", token, true)
+end
+
+local function popAutoAttackBlock(humanoid, token)
+	setActionBlock(humanoid, "autoAttack", "CanAutoAttackBlockCount", "CanAutoAttack", token, false)
+end
+
+local function getAnchorState(rootPart)
+	local state = anchorBlocks[rootPart]
+	if not state then
+		state = {
+			originalAnchored = rootPart.Anchored,
+			tokens = {},
+			cframes = {},
+			pendingRestoreCFrame = nil,
+		}
+		anchorBlocks[rootPart] = state
+	end
+	return state
+end
+
+local function pushAnchor(rootPart, token, captureCFrame)
+	if not rootPart or token == nil then return end
+
+	local state = getAnchorState(rootPart)
+	if captureCFrame and not state.cframes[token] then
+		state.cframes[token] = rootPart.CFrame
+	end
+	state.tokens[token] = true
+
+	rootPart.Anchored = true
+	rootPart:SetAttribute("AnchorBlockCount", countEntries(state.tokens))
+end
+
+local function popAnchor(rootPart, token, restoreCFrame)
+	if not rootPart or token == nil then return end
+
+	local state = anchorBlocks[rootPart]
+	if not state then return end
+
+	local savedCFrame = state.cframes[token]
+	state.tokens[token] = nil
+	state.cframes[token] = nil
+
+	if restoreCFrame and savedCFrame then
+		state.pendingRestoreCFrame = savedCFrame
+	end
+
+	local count = countEntries(state.tokens)
+	rootPart:SetAttribute("AnchorBlockCount", count)
+	if count > 0 then return end
+
+	if state.pendingRestoreCFrame then
+		rootPart.CFrame = state.pendingRestoreCFrame
+	end
+	rootPart.Anchored = state.originalAnchored
+	anchorBlocks[rootPart] = nil
+end
+
+local function getAttributeModState(humanoid, stat)
+	local byStat = attributeMods[humanoid]
+	if not byStat then
+		byStat = {}
+		attributeMods[humanoid] = byStat
+	end
+
+	local state = byStat[stat]
+	if not state then
+		local originalValue = humanoid:GetAttribute(stat)
+		state = {
+			base = originalValue or 0,
+			hadBase = originalValue ~= nil,
+			modifiers = {},
+		}
+		byStat[stat] = state
+	end
+
+	return byStat, state
+end
+
+local function refreshAttributeModifier(humanoid, stat, state)
+	local flatBonus = 0
+	local multiplier = 1
+
+	for _, modifier in pairs(state.modifiers) do
+		flatBonus = flatBonus + (modifier.flat or 0)
+		if modifier.percent then
+			multiplier = multiplier * (1 + modifier.percent)
+		end
+	end
+
+	humanoid:SetAttribute(stat, (state.base + flatBonus) * multiplier)
+end
+
+local function setAttributeModifier(humanoid, stat, token, modType, value)
+	if not humanoid or not stat or token == nil then return end
+
+	local _, state = getAttributeModState(humanoid, stat)
+	if modType == "Percent" then
+		state.modifiers[token] = { percent = value }
+	else
+		state.modifiers[token] = { flat = value }
+	end
+	refreshAttributeModifier(humanoid, stat, state)
+end
+
+local function clearAttributeModifier(humanoid, stat, token)
+	if not humanoid or not stat or token == nil then return end
+
+	local byStat = attributeMods[humanoid]
+	if not byStat then return end
+
+	local state = byStat[stat]
+	if not state then return end
+
+	state.modifiers[token] = nil
+	if next(state.modifiers) then
+		refreshAttributeModifier(humanoid, stat, state)
+		return
+	end
+
+	if state.hadBase then
+		humanoid:SetAttribute(stat, state.base)
+	else
+		humanoid:SetAttribute(stat, nil)
+	end
+	byStat[stat] = nil
+	if not next(byStat) then
+		attributeMods[humanoid] = nil
+	end
+end
+
+local function getPropertyModState(humanoid, property)
+	local byProperty = propertyMods[humanoid]
+	if not byProperty then
+		byProperty = {}
+		propertyMods[humanoid] = byProperty
+	end
+
+	local state = byProperty[property]
+	if not state then
+		state = {
+			base = humanoid[property],
+			modifiers = {},
+		}
+		byProperty[property] = state
+	end
+
+	return byProperty, state
+end
+
+local function refreshPropertyModifier(humanoid, property, state)
+	local flatBonus = 0
+	local multiplier = 1
+
+	for _, modifier in pairs(state.modifiers) do
+		flatBonus = flatBonus + (modifier.flat or 0)
+		if modifier.percent then
+			multiplier = multiplier * (1 + modifier.percent)
+		end
+	end
+
+	humanoid[property] = math.max(0, (state.base + flatBonus) * multiplier)
+end
+
+local function setPropertyModifier(humanoid, property, token, modType, value)
+	if not humanoid or not property or token == nil then return end
+
+	local _, state = getPropertyModState(humanoid, property)
+	if modType == "Percent" then
+		state.modifiers[token] = { percent = value }
+	else
+		state.modifiers[token] = { flat = value }
+	end
+	refreshPropertyModifier(humanoid, property, state)
+end
+
+local function clearPropertyModifier(humanoid, property, token)
+	if not humanoid or not property or token == nil then return end
+
+	local byProperty = propertyMods[humanoid]
+	if not byProperty then return end
+
+	local state = byProperty[property]
+	if not state then return end
+
+	state.modifiers[token] = nil
+	if next(state.modifiers) then
+		refreshPropertyModifier(humanoid, property, state)
+		return
+	end
+
+	humanoid[property] = state.base
+	byProperty[property] = nil
+	if not next(byProperty) then
+		propertyMods[humanoid] = nil
+	end
+end
+
+local function refreshShieldAmount(humanoid, shields)
+	local amount = 0
+	for _, shield in pairs(shields) do
+		amount = amount + math.max(0, shield.remaining or 0)
+	end
+
+	humanoid:SetAttribute("ShieldAmount", amount)
+	if amount <= 0 then
+		shieldMods[humanoid] = nil
+	end
+end
+
+local function addShieldModifier(humanoid, token, amount)
+	if not humanoid or token == nil or amount <= 0 then return end
+
+	local shields = shieldMods[humanoid]
+	if not shields then
+		shields = {}
+		shieldMods[humanoid] = shields
+	end
+
+	shields[token] = { remaining = amount }
+	refreshShieldAmount(humanoid, shields)
+end
+
+local function clearShieldModifier(humanoid, token)
+	if not humanoid or token == nil then return end
+
+	local shields = shieldMods[humanoid]
+	if not shields or not shields[token] then return end
+
+	shields[token] = nil
+	refreshShieldAmount(humanoid, shields)
+end
+
+local function absorbDamageWithShields(humanoid, amount)
+	local shields = shieldMods[humanoid]
+	if shields then
+		local remainingDamage = amount
+		for token, shield in pairs(shields) do
+			if remainingDamage <= 0 then break end
+
+			local shieldRemaining = math.max(0, shield.remaining or 0)
+			local absorbed = math.min(shieldRemaining, remainingDamage)
+			shield.remaining = shieldRemaining - absorbed
+			remainingDamage = remainingDamage - absorbed
+			if shield.remaining <= 0 then
+				shields[token] = nil
+			end
+		end
+
+		refreshShieldAmount(humanoid, shields)
+		return remainingDamage
+	end
+
+	local shieldAmount = humanoid:GetAttribute("ShieldAmount") or 0
+	if shieldAmount <= 0 then return amount end
+
+	if shieldAmount >= amount then
+		humanoid:SetAttribute("ShieldAmount", shieldAmount - amount)
+		return 0
+	end
+
+	humanoid:SetAttribute("ShieldAmount", 0)
+	return amount - shieldAmount
+end
+
 function EffectExecutor:Execute(source, target, effectConfig, buff)
 	if not effectConfig or not effectConfig.Type then
-		warn("[EffectExecutor] 无效的效果配置")
+		warn("[EffectExecutor] Invalid effect config")
 		return
 	end
 
 	local effectType = effectConfig.Type
-
 	if effectType == "Damage" then
 		self:_executeDamage(source, target, effectConfig)
 	elseif effectType == "CC" then
@@ -66,85 +370,63 @@ function EffectExecutor:Execute(source, target, effectConfig, buff)
 	elseif effectType == "StatMod" then
 		self:_executeStatMod(source, target, effectConfig, buff)
 	elseif effectType == "DoT" then
-		-- DoT 首次施加时执行第一次 Tick
 		self:_executeDoT(source, target, effectConfig)
 	elseif effectType == "HoT" then
-		-- HoT 首次施加时执行第一次 Tick
 		self:_executeHoT(source, target, effectConfig)
 	end
 end
 
--- ========== Shield 抵消公共方法 ==========
-
---- 扣除护盾后造成伤害（Damage/DoT 共用）
--- @param humanoid Humanoid 目标
--- @param amount number 原始伤害量
 function EffectExecutor:_applyDamageAfterShield(humanoid, amount)
 	if not humanoid or humanoid.Health <= 0 or amount <= 0 then return end
 
-	local shieldAmount = humanoid:GetAttribute("ShieldAmount") or 0
-	if shieldAmount > 0 then
-		if shieldAmount >= amount then
-			humanoid:SetAttribute("ShieldAmount", shieldAmount - amount)
-			return -- 伤害全部被护盾吸收
-		else
-			amount = amount - shieldAmount
-			humanoid:SetAttribute("ShieldAmount", 0)
-		end
+	local damageReduction = humanoid:GetAttribute("DamageReduction") or 0
+	if damageReduction > 0 then
+		amount = amount * (1 - math.clamp(damageReduction, 0, 0.9))
 	end
+
+	amount = absorbDamageWithShields(humanoid, amount)
+	if amount <= 0 then return end
 
 	humanoid:TakeDamage(amount)
 end
 
--- ========== Damage 执行器 ==========
-
 function EffectExecutor:_executeDamage(source, target, config)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then return end
+
 	self:_applyDamageAfterShield(humanoid, config.Amount or 0)
 
-	-- REQ-007: 被动事件派发 (受到伤害 → OnDamaged)
 	local targetPlayer = Players:GetPlayerFromCharacter(target)
-	if targetPlayer then
-		getPassiveSystem():OnEvent("OnDamaged", targetPlayer, {
-			source = source,
-			damage = config.Amount or 0,
-			damageType = config.DamageType or "Magic",
-		})
-		-- Rage 能量获取 (受到伤害)
-		local rageGain = EnergyConfig.Rage and EnergyConfig.Rage.GainOnDamaged or 0
-		if rageGain > 0 then
-			getEnergySystem():AddEnergy(targetPlayer, rageGain, "damaged")
-		end
+	if not targetPlayer then return end
+
+	getPassiveSystem():OnEvent("OnDamaged", targetPlayer, {
+		source = source,
+		damage = config.Amount or 0,
+		damageType = config.DamageType or "Magic",
+	})
+
+	local rageGain = EnergyConfig.Rage and EnergyConfig.Rage.GainOnDamaged or 0
+	if rageGain > 0 then
+		getEnergySystem():AddEnergy(targetPlayer, rageGain, "damaged")
 	end
 end
-
--- ========== CC 执行器 ==========
 
 function EffectExecutor:_executeCC(source, target, config, buff)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	local rootPart = target:FindFirstChild("HumanoidRootPart")
 	if not humanoid or humanoid.Health <= 0 then return end
+	if (humanoid:GetAttribute("CCImmune") or 0) > 0 then return end
 
 	local ccType = config.CCType
-	local originals = getOriginals(target)
-	local buffKey = buff and buff.instanceId or ("cc_" .. tostring(config.CCType))
 
 	if ccType == "Stun" or ccType == "Knockup" then
-		-- 禁止移动、施法、普攻
-		if rootPart and not originals[buffKey .. "_Anchored"] then
-			originals[buffKey .. "_Anchored"] = rootPart.Anchored
-			originals[buffKey .. "_OriginalCFrame"] = rootPart.CFrame
-			rootPart.Anchored = true
+		if rootPart then
+			pushAnchor(rootPart, getBuffToken(buff, "hard_cc_anchor"), ccType == "Knockup")
 		end
-		if not originals[buffKey .. "_WalkSpeed"] then
-			originals[buffKey .. "_WalkSpeed"] = humanoid.WalkSpeed
-			humanoid.WalkSpeed = 0
-		end
-		humanoid:SetAttribute("CanCastSkill", false)
-		humanoid:SetAttribute("CanAutoAttack", false)
+		MovementState.PushLock(humanoid, getBuffToken(buff, "hard_cc_move_lock"))
+		pushCastBlock(humanoid, getBuffToken(buff, "hard_cc_cast_block"))
+		pushAutoAttackBlock(humanoid, getBuffToken(buff, "hard_cc_auto_block"))
 
-		-- Knockup: Tween 上抛动画
 		if ccType == "Knockup" and rootPart then
 			local duration = config.Duration or 0.8
 			local height = config.KnockupHeight or 8
@@ -153,7 +435,8 @@ function EffectExecutor:_executeCC(source, target, config, buff)
 			local startCFrame = rootPart.CFrame
 			local upCFrame = startCFrame + Vector3.new(0, height, 0)
 
-			local upTween = TweenService:Create(rootPart,
+			local upTween = TweenService:Create(
+				rootPart,
 				TweenInfo.new(upTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 				{ CFrame = upCFrame }
 			)
@@ -161,7 +444,8 @@ function EffectExecutor:_executeCC(source, target, config, buff)
 
 			task.delay(upTime, function()
 				if rootPart and rootPart.Parent then
-					local downTween = TweenService:Create(rootPart,
+					local downTween = TweenService:Create(
+						rootPart,
 						TweenInfo.new(downTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 						{ CFrame = startCFrame }
 					)
@@ -169,111 +453,67 @@ function EffectExecutor:_executeCC(source, target, config, buff)
 				end
 			end)
 		end
-
 	elseif ccType == "Slow" then
-		-- 减速
 		local percent = config.Percent or 0.25
-		if not originals[buffKey .. "_WalkSpeed"] then
-			originals[buffKey .. "_WalkSpeed"] = humanoid.WalkSpeed
-		end
-		humanoid.WalkSpeed = originals[buffKey .. "_WalkSpeed"] * (1 - percent)
-
+		MovementState.SetModifier(humanoid, getBuffToken(buff, "slow"), 0, -percent)
 	elseif ccType == "Root" then
-		-- 定身（不能移动，可以施法）
-		if rootPart and not originals[buffKey .. "_Anchored"] then
-			originals[buffKey .. "_Anchored"] = rootPart.Anchored
-			rootPart.Anchored = true
+		if rootPart then
+			pushAnchor(rootPart, getBuffToken(buff, "root_anchor"), false)
 		end
-		if not originals[buffKey .. "_WalkSpeed"] then
-			originals[buffKey .. "_WalkSpeed"] = humanoid.WalkSpeed
-			humanoid.WalkSpeed = 0
-		end
-
+		MovementState.PushLock(humanoid, getBuffToken(buff, "root_move_lock"))
 	elseif ccType == "Silence" then
-		-- 沉默（可移动，不能施法）
-		humanoid:SetAttribute("CanCastSkill", false)
-
+		pushCastBlock(humanoid, getBuffToken(buff, "silence_cast_block"))
 	elseif ccType == "Disarm" then
-		-- 缴械（可移动、施法，不能普攻）
-		humanoid:SetAttribute("CanAutoAttack", false)
+		pushAutoAttackBlock(humanoid, getBuffToken(buff, "disarm_auto_block"))
 	end
 end
 
---- CC 效果恢复（到期时调用）
 function EffectExecutor:_revertCC(target, ccType, buff)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	local rootPart = target:FindFirstChild("HumanoidRootPart")
 	if not humanoid then return end
 
-	local originals = getOriginals(target)
-	local buffKey = buff and buff.instanceId or ("cc_" .. tostring(ccType))
-
 	if ccType == "Stun" or ccType == "Knockup" then
-		if rootPart and originals[buffKey .. "_Anchored"] ~= nil then
-			rootPart.Anchored = originals[buffKey .. "_Anchored"]
-			originals[buffKey .. "_Anchored"] = nil
+		if rootPart then
+			popAnchor(rootPart, getBuffToken(buff, "hard_cc_anchor"), ccType == "Knockup")
 		end
-		-- Knockup: 恢复原始 CFrame（确保落回地面）
-		if ccType == "Knockup" and rootPart and originals[buffKey .. "_OriginalCFrame"] then
-			rootPart.CFrame = originals[buffKey .. "_OriginalCFrame"]
-			originals[buffKey .. "_OriginalCFrame"] = nil
-		end
-		if originals[buffKey .. "_WalkSpeed"] then
-			humanoid.WalkSpeed = originals[buffKey .. "_WalkSpeed"]
-			originals[buffKey .. "_WalkSpeed"] = nil
-		end
-		humanoid:SetAttribute("CanCastSkill", true)
-		humanoid:SetAttribute("CanAutoAttack", true)
-
+		MovementState.PopLock(humanoid, getBuffToken(buff, "hard_cc_move_lock"))
+		popCastBlock(humanoid, getBuffToken(buff, "hard_cc_cast_block"))
+		popAutoAttackBlock(humanoid, getBuffToken(buff, "hard_cc_auto_block"))
 	elseif ccType == "Slow" then
-		if originals[buffKey .. "_WalkSpeed"] then
-			humanoid.WalkSpeed = originals[buffKey .. "_WalkSpeed"]
-			originals[buffKey .. "_WalkSpeed"] = nil
-		end
-
+		MovementState.ClearModifier(humanoid, getBuffToken(buff, "slow"))
 	elseif ccType == "Root" then
-		if rootPart and originals[buffKey .. "_Anchored"] ~= nil then
-			rootPart.Anchored = originals[buffKey .. "_Anchored"]
-			originals[buffKey .. "_Anchored"] = nil
+		if rootPart then
+			popAnchor(rootPart, getBuffToken(buff, "root_anchor"), false)
 		end
-		if originals[buffKey .. "_WalkSpeed"] then
-			humanoid.WalkSpeed = originals[buffKey .. "_WalkSpeed"]
-			originals[buffKey .. "_WalkSpeed"] = nil
-		end
-
+		MovementState.PopLock(humanoid, getBuffToken(buff, "root_move_lock"))
 	elseif ccType == "Silence" then
-		humanoid:SetAttribute("CanCastSkill", true)
-
+		popCastBlock(humanoid, getBuffToken(buff, "silence_cast_block"))
 	elseif ccType == "Disarm" then
-		humanoid:SetAttribute("CanAutoAttack", true)
-	end
-
-	-- 清理空条目
-	if not next(originals) then
-		_originalValues[target] = nil
+		popAutoAttackBlock(humanoid, getBuffToken(buff, "disarm_auto_block"))
 	end
 end
-
--- ========== Shield 执行器 ==========
 
 function EffectExecutor:_executeShield(source, target, config, buff)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
-	local amount = config.Amount or 0
-	local current = humanoid:GetAttribute("ShieldAmount") or 0
-	humanoid:SetAttribute("ShieldAmount", current + amount)
+	addShieldModifier(humanoid, getBuffToken(buff, "shield"), config.Amount or 0)
 end
 
--- ========== DoT 执行器（单次 Tick） ==========
+function EffectExecutor:_revertShield(target, buff)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	clearShieldModifier(humanoid, getBuffToken(buff, "shield"))
+end
 
 function EffectExecutor:_executeDoT(source, target, config)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then return end
+
 	self:_applyDamageAfterShield(humanoid, config.TickDamage or 0)
 end
-
--- ========== HoT 执行器（单次 Tick） ==========
 
 function EffectExecutor:_executeHoT(source, target, config)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
@@ -283,8 +523,6 @@ function EffectExecutor:_executeHoT(source, target, config)
 	humanoid.Health = math.min(humanoid.Health + tickHeal, humanoid.MaxHealth)
 end
 
--- ========== StatMod 执行器 ==========
-
 function EffectExecutor:_executeStatMod(source, target, config, buff)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
@@ -293,70 +531,37 @@ function EffectExecutor:_executeStatMod(source, target, config, buff)
 	local modType = config.ModType or "Flat"
 	local value = config.Value or 0
 
-	local originals = getOriginals(target)
-	local buffKey = buff and buff.instanceId or ("statmod_" .. tostring(stat))
-
-	-- 支持 Humanoid 内建属性和自定义 Attribute
-	if stat == "WalkSpeed" then
-		if not originals[buffKey .. "_WalkSpeed"] then
-			originals[buffKey .. "_WalkSpeed"] = humanoid.WalkSpeed
+	if stat == "Energy" then
+		local targetPlayer = Players:GetPlayerFromCharacter(target)
+		if targetPlayer and modType == "Flat" and value > 0 then
+			getEnergySystem():AddEnergy(targetPlayer, value, "skill_hit")
 		end
-		if modType == "Flat" then
-			humanoid.WalkSpeed = humanoid.WalkSpeed + value
-		elseif modType == "Percent" then
-			humanoid.WalkSpeed = humanoid.WalkSpeed * (1 + value)
+	elseif stat == "WalkSpeed" or stat == "MoveSpeed" then
+		local token = getBuffToken(buff, "movespeed")
+		if modType == "Percent" then
+			MovementState.SetModifier(humanoid, token, 0, value)
+		else
+			MovementState.SetModifier(humanoid, token, value, 0)
 		end
 	elseif stat == "JumpPower" then
-		if not originals[buffKey .. "_JumpPower"] then
-			originals[buffKey .. "_JumpPower"] = humanoid.JumpPower
-		end
-		if modType == "Flat" then
-			humanoid.JumpPower = humanoid.JumpPower + value
-		elseif modType == "Percent" then
-			humanoid.JumpPower = humanoid.JumpPower * (1 + value)
-		end
+		setPropertyModifier(humanoid, "JumpPower", getBuffToken(buff, "stat_" .. tostring(stat)), modType, value)
 	else
-		-- 自定义属性 — 通过 Attribute 系统
-		local currentVal = humanoid:GetAttribute(stat) or 0
-		if not originals[buffKey .. "_" .. stat] then
-			originals[buffKey .. "_" .. stat] = currentVal
-		end
-		if modType == "Flat" then
-			humanoid:SetAttribute(stat, currentVal + value)
-		elseif modType == "Percent" then
-			humanoid:SetAttribute(stat, currentVal * (1 + value))
-		end
+		setAttributeModifier(humanoid, stat, getBuffToken(buff, "stat_" .. tostring(stat)), modType, value)
 	end
 end
 
---- StatMod 效果恢复（到期时调用）
 function EffectExecutor:_revertStatMod(target, stat, buff)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
-	local originals = getOriginals(target)
-	local buffKey = buff and buff.instanceId or ("statmod_" .. tostring(stat))
-
-	if stat == "WalkSpeed" then
-		if originals[buffKey .. "_WalkSpeed"] then
-			humanoid.WalkSpeed = originals[buffKey .. "_WalkSpeed"]
-			originals[buffKey .. "_WalkSpeed"] = nil
-		end
+	if stat == "Energy" then
+		return
+	elseif stat == "WalkSpeed" or stat == "MoveSpeed" then
+		MovementState.ClearModifier(humanoid, getBuffToken(buff, "movespeed"))
 	elseif stat == "JumpPower" then
-		if originals[buffKey .. "_JumpPower"] then
-			humanoid.JumpPower = originals[buffKey .. "_JumpPower"]
-			originals[buffKey .. "_JumpPower"] = nil
-		end
+		clearPropertyModifier(humanoid, "JumpPower", getBuffToken(buff, "stat_" .. tostring(stat)))
 	else
-		if originals[buffKey .. "_" .. stat] then
-			humanoid:SetAttribute(stat, originals[buffKey .. "_" .. stat])
-			originals[buffKey .. "_" .. stat] = nil
-		end
-	end
-
-	-- 清理空条目
-	if not next(originals) then
-		_originalValues[target] = nil
+		clearAttributeModifier(humanoid, stat, getBuffToken(buff, "stat_" .. tostring(stat)))
 	end
 end
 

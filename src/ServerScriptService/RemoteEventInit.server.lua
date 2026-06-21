@@ -1,8 +1,8 @@
 -- ==========================================
--- RemoteEvent 初始化器
--- 职责：在所有其他脚本启动前，确保所有需要的 RemoteEvent 存在
--- 原因：Rojo 同步 ReplicatedStorage 时会删除手动创建的 Instance，
---        所以需要服务端脚本在运行时重新创建它们
+-- RemoteEvent 初始化器 (安全网模式)
+-- 主要创建源：default.project.json 中 Rojo 项目树静态声明
+-- 此脚本作为安全网：如果 Rojo 项目树声明缺失某个 Event，
+-- 运行时补创建，确保向后兼容。
 -- ==========================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -22,6 +22,8 @@ local REMOTE_EVENTS = {
 
 	-- 战斗
 	"AttackTargetEvent",
+	"MatchStateEvent",
+	"DeathTimerEvent",
 
 	-- 特效/音效/镜头
 	"SkillVFXEvent",
@@ -43,14 +45,15 @@ local REMOTE_EVENTS = {
 	"TrainingEvent",
 	"TrainingSyncEvent",
 
-	-- 注意: 以下由 GameManager / MatchSystem 自己创建，这里也确保存在
+	-- 训练场模式进入/退出 (REQ-002)
+	"TrainingModeEvent",
+
+	-- 注意: 以下由 GameManager 自己创建，这里也确保存在
 	-- "GameStateEvent",
 	-- "BattleStartEvent",
 	-- "MatchResultEvent",
 	-- "HeroSelectEvent",
 	-- "RematchEvent",
-	-- "MatchStateEvent",
-	-- "DeathTimerEvent",
 }
 
 local created = 0

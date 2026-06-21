@@ -16,6 +16,21 @@ function HouYiW.new(skillID)
 	return setmetatable(AreaSkill.new(skillID), HouYiW)
 end
 
+local function getSafeFlatDirection(fromPos, targetPos, fallbackCFrame)
+	local flatOffset = Vector3.new(targetPos.X - fromPos.X, 0, targetPos.Z - fromPos.Z)
+	if flatOffset.Magnitude >= 0.001 then
+		return flatOffset.Unit
+	end
+
+	local fallback = fallbackCFrame and fallbackCFrame.LookVector or Vector3.new(0, 0, -1)
+	fallback = Vector3.new(fallback.X, 0, fallback.Z)
+	if fallback.Magnitude >= 0.001 then
+		return fallback.Unit
+	end
+
+	return Vector3.new(0, 0, -1)
+end
+
 -- ===== VFX =====
 
 local function createTowerVFX(position, radius)
@@ -122,7 +137,7 @@ function HouYiW:OnCast(player, targetPos)
 	if dist <= maxRange then
 		castPos = Vector3.new(targetPos.X, startPos.Y, targetPos.Z)
 	else
-		castPos = startPos + (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit * maxRange
+		castPos = startPos + getSafeFlatDirection(startPos, targetPos, rootPart.CFrame) * maxRange
 	end
 
 	-- 调用父类, 使用限制后的位置

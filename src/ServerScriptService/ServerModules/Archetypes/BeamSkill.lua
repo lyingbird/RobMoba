@@ -1,8 +1,3 @@
--- ==========================================
--- BeamSkill: 激光技能 Archetype 基类
--- 覆盖: ~10% 技能 (LuxR, AngelaR)
--- 两种模式: Instant(瞬发贯穿) / Channel(持续引导)
--- ==========================================
 local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,15 +5,42 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BaseSkill = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("BaseSkill"))
 local CombatUtils = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("CombatUtils"))
 local SkillHelper = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("SkillHelper"))
+local MovementState = require(ServerScriptService:WaitForChild("ServerModules"):WaitForChild("MovementState"))
 
 local BeamSkill = setmetatable({}, BaseSkill)
 BeamSkill.__index = BeamSkill
+
+local function isFiniteNumber(value)
+	return typeof(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
+local function isFiniteVector3(value)
+	return typeof(value) == "Vector3"
+		and isFiniteNumber(value.X)
+		and isFiniteNumber(value.Y)
+		and isFiniteNumber(value.Z)
+end
+
+local function getSafeFlatDirection(fromPos, targetPos, fallbackCFrame)
+	local safeTargetPos = isFiniteVector3(targetPos) and targetPos or (fromPos + (fallbackCFrame and fallbackCFrame.LookVector or Vector3.new(0, 0, -1)))
+	local flatOffset = Vector3.new(safeTargetPos.X - fromPos.X, 0, safeTargetPos.Z - fromPos.Z)
+	if flatOffset.Magnitude >= 0.001 then
+		return flatOffset.Unit
+	end
+
+	local fallback = fallbackCFrame and fallbackCFrame.LookVector or Vector3.new(0, 0, -1)
+	fallback = Vector3.new(fallback.X, 0, fallback.Z)
+	if fallback.Magnitude >= 0.001 then
+		return fallback.Unit
+	end
+
+	return Vector3.new(0, 0, -1)
+end
 
 function BeamSkill.new(skillID)
 	return setmetatable(BaseSkill.new(skillID), BeamSkill)
 end
 
---- 子类可重写: 返回激光配置
 function BeamSkill:GetBeamConfig()
 	return {
 		Width = self.Config.Width or 6,
@@ -34,12 +56,10 @@ function BeamSkill:GetBeamConfig()
 	}
 end
 
---- 子类可选重写
 function BeamSkill:OnBeamHit(player, target, hitPos) end
 function BeamSkill:OnBeamTick(player, targets) end
 function BeamSkill:OnBeamEnd(player) end
 
---- 直线范围检测: 获取光束路径上的所有敌人
 function BeamSkill:_detectBeamTargets(player, character, beamStart, direction, range, halfWidth)
 	local hitTargets = {}
 	local enemies = CombatUtils.getEnemiesInRange(player, beamStart, range, character)
@@ -60,78 +80,108 @@ function BeamSkill:_detectBeamTargets(player, character, beamStart, direction, r
 	return hitTargets
 end
 
---- 标准激光释放
 function BeamSkill:OnCast(player, targetPos)
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-	local rootPart = character.HumanoidRootPart
 
+	local rootPart = character.HumanoidRootPart
+	local humanoidSelf = character:FindFirstChildOfClass("Humanoid")
 	local config = self:GetBeamConfig()
 	local halfWidth = config.Width / 2
 
-	-- 蓄力等待
 	if config.CastTime > 0 then
 		task.wait(config.CastTime)
 	end
 
 	if not character or not character.Parent or not rootPart or not rootPart.Parent then return end
+	if humanoidSelf and (humanoidSelf.Health <= 0 or humanoidSelf:GetAttribute("CanCastSkill") == false) then return end
 
 	if config.Mode == "Instant" then
-		-- ===== 瞬发模式: 一次性命中 =====
 		local startPos = rootPart.Position
-		local direction = (Vector3.new(targetPos.X, startPos.Y, targetPos.Z) - startPos).Unit
+		local direction = getSafeFlatDirection(startPos, targetPos, rootPart.CFrame)
 		local beamStart = startPos + direction * 3
-
-		-- 效果施加
-		local effectIds = config.OnHitEffects
 		local targets = self:_detectBeamTargets(player, character, beamStart, direction, config.Range, halfWidth)
+
 		for _, model in ipairs(targets) do
-			SkillHelper.ApplyEffects(self, character, model, effectIds)
+			SkillHelper.ApplyEffects(self, character, model, config.OnHitEffects)
 			model:SetAttribute("LastDamagePlayer", player.Name)
-			self:OnBeamHit(player, model, model:FindFirstChild("HumanoidRootPart") and model.HumanoidRootPart.Position or beamStart)
+			local targetRoot = model:FindFirstChild("HumanoidRootPart")
+			self:OnBeamHit(player, model, targetRoot and targetRoot.Position or beamStart)
 		end
 		self:OnBeamEnd(player)
+		return
+	end
 
-	elseif config.Mode == "Channel" then
-		-- ===== 引导模式: 持续扫射 =====
-		local humanoidSelf = character:FindFirstChildOfClass("Humanoid")
-		local originalSpeed = humanoidSelf and humanoidSelf.WalkSpeed or 16
-		if humanoidSelf then humanoidSelf.WalkSpeed = 0 end
+	if config.Mode ~= "Channel" then return end
 
-		local currentAngle = math.atan2(targetPos.X - rootPart.Position.X, targetPos.Z - rootPart.Position.Z)
-		local targetAngle = currentAngle
+	local moveLockToken = MovementState.NewLockToken("beam_channel", player, self.ID)
+	if humanoidSelf then
+		MovementState.PushLock(humanoidSelf, moveLockToken)
+	end
 
-		-- 监听客户端鼠标方向
-		local dirConn
-		if config.TrackMouse then
-			local dirEvent = ReplicatedStorage:FindFirstChild("SkillDirectionEvent")
-			if dirEvent then
-				dirConn = dirEvent.OnServerEvent:Connect(function(sender, newTargetPos)
-					if sender ~= player then return end
-					if typeof(newTargetPos) ~= "Vector3" then return end
-					targetAngle = math.atan2(newTargetPos.X - rootPart.Position.X, newTargetPos.Z - rootPart.Position.Z)
-				end)
+	local initialDirection = getSafeFlatDirection(rootPart.Position, targetPos, rootPart.CFrame)
+	local currentAngle = math.atan2(initialDirection.X, initialDirection.Z)
+	local targetAngle = currentAngle
+	local dirConn
+	local heartbeatConn
+	local released = false
+
+	local function cleanup(runEndCallback)
+		if released then return end
+		released = true
+
+		if heartbeatConn then
+			heartbeatConn:Disconnect()
+			heartbeatConn = nil
+		end
+		if dirConn then
+			dirConn:Disconnect()
+			dirConn = nil
+		end
+		if humanoidSelf and humanoidSelf.Parent then
+			MovementState.PopLock(humanoidSelf, moveLockToken)
+		end
+		if runEndCallback then
+			local ok, err = pcall(function()
+				self:OnBeamEnd(player)
+			end)
+			if not ok then
+				warn("[BeamSkill] OnBeamEnd failed: " .. tostring(err))
 			end
 		end
+	end
 
-		local startTime = os.clock()
-		local lastTickTime = 0
+	if config.TrackMouse then
+		local dirEvent = ReplicatedStorage:FindFirstChild("SkillDirectionEvent")
+		if dirEvent then
+			dirConn = dirEvent.OnServerEvent:Connect(function(sender, newTargetPos)
+				if sender ~= player then return end
+				if not isFiniteVector3(newTargetPos) then return end
+				if not rootPart or not rootPart.Parent then return end
 
-		local heartbeatConn
-		heartbeatConn = RunService.Heartbeat:Connect(function(dt)
+				local newDirection = getSafeFlatDirection(rootPart.Position, newTargetPos, rootPart.CFrame)
+				targetAngle = math.atan2(newDirection.X, newDirection.Z)
+			end)
+		end
+	end
+
+	local startTime = os.clock()
+	local lastTickTime = 0
+
+	heartbeatConn = RunService.Heartbeat:Connect(function(dt)
+		local ok, err = xpcall(function()
 			local elapsed = os.clock() - startTime
-
-			if elapsed >= config.Duration or not character or not character.Parent or not rootPart or not rootPart.Parent then
-				heartbeatConn:Disconnect()
-				if dirConn then dirConn:Disconnect() end
-				if humanoidSelf and humanoidSelf.Parent then
-					humanoidSelf.WalkSpeed = originalSpeed
-				end
-				self:OnBeamEnd(player)
+			if elapsed >= config.Duration
+				or not character
+				or not character.Parent
+				or not rootPart
+				or not rootPart.Parent
+				or (humanoidSelf and (humanoidSelf.Health <= 0 or humanoidSelf:GetAttribute("CanCastSkill") == false))
+			then
+				cleanup(true)
 				return
 			end
 
-			-- 缓慢转向
 			if config.TrackMouse then
 				local angleDiff = targetAngle - currentAngle
 				angleDiff = math.atan2(math.sin(angleDiff), math.cos(angleDiff))
@@ -145,24 +195,24 @@ function BeamSkill:OnCast(player, targetPos)
 
 			local direction = Vector3.new(math.sin(currentAngle), 0, math.cos(currentAngle))
 			local beamStart = rootPart.Position + direction * 3
-
-			-- 面向方向
 			rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + direction)
 
-			-- 定时 Tick 伤害
 			if elapsed - lastTickTime >= config.TickInterval then
 				lastTickTime = elapsed
-
-				local effectIds = config.TickEffects
 				local targets = self:_detectBeamTargets(player, character, beamStart, direction, config.Range, halfWidth)
 				for _, model in ipairs(targets) do
-					SkillHelper.ApplyEffects(self, character, model, effectIds)
+					SkillHelper.ApplyEffects(self, character, model, config.TickEffects)
 					model:SetAttribute("LastDamagePlayer", player.Name)
 				end
 				self:OnBeamTick(player, targets)
 			end
-		end)
-	end
+		end, tostring)
+
+		if not ok then
+			warn("[BeamSkill] Channel heartbeat failed: " .. tostring(err))
+			cleanup(true)
+		end
+	end)
 end
 
 return BeamSkill

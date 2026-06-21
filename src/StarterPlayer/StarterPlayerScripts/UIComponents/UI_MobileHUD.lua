@@ -13,8 +13,10 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
 local MobileConfig = require(script.Parent.Parent:WaitForChild("Modules"):WaitForChild("MobileConfig"))
+local EnergyConfig = require(ReplicatedStorage:WaitForChild("EnergyConfig"))
 
 local UI_MobileHUD = {}
+
 
 -- 内部引用缓存
 local hudFrame = nil
@@ -61,21 +63,44 @@ end
 -- UI 创建
 -- ═══════════════════════════════════════
 local function createTopBar(parent)
+	-- REQ-015: 王者荣耀标准顶部信息栏 (5区布局)
+	-- 高度5%, 起始Y=SafeArea顶部之后
 	topBar = Instance.new("Frame")
 	topBar.Name = "TopBar"
-	topBar.Size = UDim2.new(1, 0, 0.08, 0)
-	topBar.Position = UDim2.new(0, 0, 0, 0)
+	topBar.Size = UDim2.new(1, 0, 0.05, 0)
+	topBar.Position = UDim2.new(0, 0, 0, MobileConfig.SAFE_AREA_TOP)
 	topBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	topBar.BackgroundTransparency = 0.5
 	topBar.BorderSizePixel = 0
 	topBar.ZIndex = 5
 	topBar.Parent = parent
 
+	-- 左区(30%): 等级圆标 + HP条+数值(上行) + MP条+数值(下行)
+
+	-- 等级标签(圆形)
+	levelLabel = Instance.new("TextLabel")
+	levelLabel.Name = "LevelLabel"
+	levelLabel.Size = UDim2.new(0.03, 0, 0.7, 0)
+	levelLabel.Position = UDim2.new(0.02, 0, 0.15, 0)
+	levelLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	levelLabel.BackgroundTransparency = 0.3
+	levelLabel.TextColor3 = Color3.new(1, 1, 1)
+	levelLabel.Text = "1"
+	levelLabel.TextScaled = true
+	levelLabel.Font = Enum.Font.GothamBold
+	levelLabel.ZIndex = 6
+	levelLabel.BorderSizePixel = 0
+	levelLabel.Parent = topBar
+
+	local lvCorner = Instance.new("UICorner")
+	lvCorner.CornerRadius = UDim.new(0.5, 0)
+	lvCorner.Parent = levelLabel
+
 	-- HP条
 	local hpBg = Instance.new("Frame")
 	hpBg.Name = "HPBackground"
-	hpBg.Size = UDim2.new(MobileConfig.HP_BAR_WIDTH, 0, MobileConfig.HP_BAR_HEIGHT, 0)
-	hpBg.Position = UDim2.new(0.08, 0, 0.25, 0)
+	hpBg.Size = UDim2.new(MobileConfig.HP_BAR_WIDTH, 0, 0.35, 0)
+	hpBg.Position = UDim2.new(0.06, 0, 0.1, 0)
 	hpBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 	hpBg.BorderSizePixel = 0
 	hpBg.ZIndex = 6
@@ -99,11 +124,23 @@ local function createTopBar(parent)
 
 	hpBar = hpBg
 
+	-- HP数值标签
+	local hpText = Instance.new("TextLabel")
+	hpText.Name = "HPText"
+	hpText.Size = UDim2.new(1, 0, 1, 0)
+	hpText.BackgroundTransparency = 1
+	hpText.TextColor3 = Color3.new(1, 1, 1)
+	hpText.Text = ""
+	hpText.TextScaled = true
+	hpText.Font = Enum.Font.GothamBold
+	hpText.ZIndex = 8
+	hpText.Parent = hpBg
+
 	-- MP条
 	local mpBg = Instance.new("Frame")
 	mpBg.Name = "MPBackground"
-	mpBg.Size = UDim2.new(MobileConfig.HP_BAR_WIDTH, 0, MobileConfig.MP_BAR_HEIGHT, 0)
-	mpBg.Position = UDim2.new(0.08, 0, 0.55, 0)
+	mpBg.Size = UDim2.new(MobileConfig.HP_BAR_WIDTH, 0, 0.28, 0)
+	mpBg.Position = UDim2.new(0.06, 0, 0.55, 0)
 	mpBg.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
 	mpBg.BorderSizePixel = 0
 	mpBg.ZIndex = 6
@@ -127,30 +164,23 @@ local function createTopBar(parent)
 
 	mpBar = mpBg
 
-	-- 等级标签
-	levelLabel = Instance.new("TextLabel")
-	levelLabel.Name = "LevelLabel"
-	levelLabel.Size = UDim2.new(0.04, 0, 0.8, 0)
-	levelLabel.Position = UDim2.new(0.04, 0, 0.1, 0)
-	levelLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-	levelLabel.BackgroundTransparency = 0.3
-	levelLabel.TextColor3 = Color3.new(1, 1, 1)
-	levelLabel.Text = "1"
-	levelLabel.TextScaled = true
-	levelLabel.Font = Enum.Font.GothamBold
-	levelLabel.ZIndex = 6
-	levelLabel.BorderSizePixel = 0
-	levelLabel.Parent = topBar
+	-- MP数值标签
+	local mpText = Instance.new("TextLabel")
+	mpText.Name = "MPText"
+	mpText.Size = UDim2.new(1, 0, 1, 0)
+	mpText.BackgroundTransparency = 1
+	mpText.TextColor3 = Color3.new(1, 1, 1)
+	mpText.Text = ""
+	mpText.TextScaled = true
+	mpText.Font = Enum.Font.GothamBold
+	mpText.ZIndex = 8
+	mpText.Parent = mpBg
 
-	local lvCorner = Instance.new("UICorner")
-	lvCorner.CornerRadius = UDim.new(0.5, 0)
-	lvCorner.Parent = levelLabel
-
-	-- 对局时间
+	-- 中区(20%): 对局时间
 	timerLabel = Instance.new("TextLabel")
 	timerLabel.Name = "TimerLabel"
-	timerLabel.Size = UDim2.new(0.1, 0, 0.6, 0)
-	timerLabel.Position = UDim2.new(0.45, 0, 0.2, 0)
+	timerLabel.Size = UDim2.new(0.1, 0, 0.5, 0)
+	timerLabel.Position = UDim2.new(0.45, 0, 0.05, 0)
 	timerLabel.BackgroundTransparency = 1
 	timerLabel.TextColor3 = Color3.new(1, 1, 1)
 	timerLabel.Text = "00:00"
@@ -159,11 +189,11 @@ local function createTopBar(parent)
 	timerLabel.ZIndex = 6
 	timerLabel.Parent = topBar
 
-	-- 击杀比分
+	-- 右中(20%): 击杀比分
 	scoreLabel = Instance.new("TextLabel")
 	scoreLabel.Name = "ScoreLabel"
 	scoreLabel.Size = UDim2.new(0.1, 0, 0.4, 0)
-	scoreLabel.Position = UDim2.new(0.45, 0, 0.6, 0)
+	scoreLabel.Position = UDim2.new(0.45, 0, 0.55, 0)
 	scoreLabel.BackgroundTransparency = 1
 	scoreLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	scoreLabel.Text = "0 vs 0"
@@ -335,6 +365,12 @@ function UI_MobileHUD.UpdateHP(current, max)
 		BackgroundColor3 = getHPColor(ratio),
 	}):Play()
 
+	-- REQ-015: 更新HP数值文字
+	local hpText = hpBar and hpBar:FindFirstChild("HPText")
+	if hpText then
+		hpText.Text = math.floor(current) .. "/" .. math.floor(max)
+	end
+
 	-- 低HP闪烁
 	if ratio < 0.3 then
 		if not lowHpTween then
@@ -361,6 +397,12 @@ function UI_MobileHUD.UpdateMP(current, max)
 	TweenService:Create(mpFill, tweenInfo, {
 		Size = UDim2.new(ratio, 0, 1, 0),
 	}):Play()
+
+	-- REQ-015: 更新MP数值文字
+	local mpText = mpBar and mpBar:FindFirstChild("MPText")
+	if mpText then
+		mpText.Text = math.floor(current) .. "/" .. math.floor(max)
+	end
 end
 
 function UI_MobileHUD.UpdateLevel(level)

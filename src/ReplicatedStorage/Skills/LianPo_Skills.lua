@@ -142,7 +142,7 @@ return {
 		Range = 5,           -- HoK: 指示器范围5000 ÷1000
 		EnergyCost = 0,
 		CastRule = "Position",
-		aimType = "area", -- 触屏: 按住拖拽选位置释放(范围AOE)
+		aimType = "circle_drop", -- 触屏: 按住拖拽选位置释放(范围AOE)
 		ArchetypeType = "Area",
 		IsUltimate = true,
 		-- Archetype 参数 (3段跺地, 重写OnCast)

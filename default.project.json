@@ -10,7 +10,37 @@
 
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
-      "$path": "src/ReplicatedStorage"
+      "$path": "src/ReplicatedStorage",
+
+      "CastSkillEvent":      { "$className": "RemoteEvent" },
+      "EquipSkillEvent":     { "$className": "RemoteEvent" },
+      "SkillDirectionEvent": { "$className": "RemoteEvent" },
+
+      "SyncCooldownEvent":   { "$className": "RemoteEvent" },
+      "SyncRecastEvent":     { "$className": "RemoteEvent" },
+      "SyncRuneEvent":       { "$className": "RemoteEvent" },
+      "SyncEquipEvent":      { "$className": "RemoteEvent" },
+      "SyncLevelEvent":      { "$className": "RemoteEvent" },
+
+      "AttackTargetEvent":   { "$className": "RemoteEvent" },
+      "MatchStateEvent":     { "$className": "RemoteEvent" },
+      "DeathTimerEvent":     { "$className": "RemoteEvent" },
+
+      "SkillVFXEvent":       { "$className": "RemoteEvent" },
+      "SkillSoundEvent":     { "$className": "RemoteEvent" },
+      "SkillCameraEvent":    { "$className": "RemoteEvent" },
+
+      "CinematicEvent":      { "$className": "RemoteEvent" },
+
+      "MatchmakingEvent":    { "$className": "RemoteEvent" },
+      "DuelEvent":           { "$className": "RemoteEvent" },
+      "HeroSwapEvent":       { "$className": "RemoteEvent" },
+
+      "SyncEnergyEvent":     { "$className": "RemoteEvent" },
+
+      "TrainingEvent":       { "$className": "RemoteEvent" },
+      "TrainingSyncEvent":   { "$className": "RemoteEvent" },
+      "TrainingModeEvent":   { "$className": "RemoteEvent" }
     },
 
     "ServerStorage": {
@@ -20,6 +50,9 @@
 
     "StarterPlayer": {
       "$className": "StarterPlayer",
+      "$properties": {
+        "DevTouchMovementMode": "Scriptable"
+      },
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
         "$path": "src/StarterPlayer/StarterPlayerScripts"
