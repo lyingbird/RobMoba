@@ -376,7 +376,7 @@ function EffectExecutor:Execute(source, target, effectConfig, buff)
 	end
 end
 
-function EffectExecutor:_applyDamageAfterShield(humanoid, amount)
+function EffectExecutor:_applyDamageAfterShield(humanoid, amount, source, target)
 	if not humanoid or humanoid.Health <= 0 or amount <= 0 then return end
 
 	local damageReduction = humanoid:GetAttribute("DamageReduction") or 0
@@ -388,13 +388,24 @@ function EffectExecutor:_applyDamageAfterShield(humanoid, amount)
 	if amount <= 0 then return end
 
 	humanoid:TakeDamage(amount)
+
+	-- 统一击杀归因：仅在实际造成伤害时，且施法者为玩家、非自伤，
+	-- 在目标上记录最后伤害来源，供 MatchSystem.onCharacterDied 按 LastDamagePlayer 计分。
+	-- 这是所有"基于效果"的伤害（普通伤害/AOE/瞬发/DoT）的唯一落地出口，
+	-- 集中在此处写入可覆盖各 Archetype 零散补写遗漏的 Area/Instant/DoT 路径。
+	if target and source and source ~= target then
+		local sourcePlayer = Players:GetPlayerFromCharacter(source)
+		if sourcePlayer then
+			target:SetAttribute("LastDamagePlayer", sourcePlayer.Name)
+		end
+	end
 end
 
 function EffectExecutor:_executeDamage(source, target, config)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then return end
 
-	self:_applyDamageAfterShield(humanoid, config.Amount or 0)
+	self:_applyDamageAfterShield(humanoid, config.Amount or 0, source, target)
 
 	local targetPlayer = Players:GetPlayerFromCharacter(target)
 	if not targetPlayer then return end
@@ -512,7 +523,7 @@ function EffectExecutor:_executeDoT(source, target, config)
 	local humanoid = target:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then return end
 
-	self:_applyDamageAfterShield(humanoid, config.TickDamage or 0)
+	self:_applyDamageAfterShield(humanoid, config.TickDamage or 0, source, target)
 end
 
 function EffectExecutor:_executeHoT(source, target, config)
