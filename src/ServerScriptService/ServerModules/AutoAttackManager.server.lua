@@ -235,6 +235,12 @@ AttackTargetEvent.OnServerEvent:Connect(function(player, targetModel)
 	targetModel:SetAttribute("LastDamagePlayer", player.Name)
 
 	targetHumanoid:TakeDamage(math.floor(damage))
+
+	-- 对局伤害统计（结算面板用）：仅战斗中累计，MatchSystem 自带 guard
+	if shared.MatchSystem and shared.MatchSystem.RecordDamage then
+		shared.MatchSystem.RecordDamage(player, math.floor(damage))
+	end
+
 	playAttackAnimation(character, targetRoot)
 	createSlashVFX(rootPart, targetRoot)
 

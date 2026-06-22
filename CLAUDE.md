@@ -40,7 +40,11 @@ self-register into the global `shared` table. They find each other through it �
 central DI. The registered managers are:
 
 `shared.LobbyManager`, `shared.DuelManager`, `shared.MatchSystem`, `shared.TrainingManager`,
-`shared.PlayerSkillManager`, `shared.GameManager`.
+`shared.PlayerSkillManager`.
+
+(`GameManager.server.lua` is **retired** — disabled via an early `do return end` and superseded by
+LobbyManager + DuelManager + MatchSystem since the REQ-002 restart. It no longer registers into
+`shared`; do not depend on `shared.GameManager`.)
 
 Code that depends on another system **must** guard the lookup (`if shared.X then … end`) because
 load order is not guaranteed. Example: `PlayerSkillManager` reads player state via

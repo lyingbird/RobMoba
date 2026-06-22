@@ -2,9 +2,10 @@
 -- 游戏流程管理器 (Game Manager)
 -- 职责：游戏状态机、英雄选择协调、对局流程控制
 -- 状态：WAITING → HERO_SELECT → LOADING → BATTLE → RESULT
--- ⚠️ 临时禁用：等待 REQ-004 游戏流程重设计（自由大厅+匹配区域）
+-- ⚠️ 已弃用：游戏流程已由 LobbyManager + DuelManager + MatchSystem 取代（REQ-002 重启后）。
+--    本文件保留仅供历史参考，运行时通过下方 do return end 不加载，也不注册 shared.GameManager。
 -- ==========================================
-print("[GameManager] ⏸️ Disabled — awaiting REQ-004 lobby system redesign")
+print("[GameManager] ⏸️ Retired — superseded by LobbyManager + DuelManager + MatchSystem")
 do return end
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")

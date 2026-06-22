@@ -82,12 +82,15 @@ local function serializeStats(duel, stats)
 	for _, player in ipairs({ duel.player1, duel.player2 }) do
 		if player then
 			local heroId = shared.LobbyManager and shared.LobbyManager.GetPlayerHero(player) or nil
+			local pstat = stats and stats[player]
 			table.insert(result.players, {
 				userId = player.UserId,
 				name = player.Name,
 				team = player.Team and player.Team.Name or nil,
 				heroId = heroId,
-				kills = stats and stats[player] or 0,
+				kills = pstat and pstat.kills or 0,
+				deaths = pstat and pstat.deaths or 0,
+				damageDealt = pstat and math.floor(pstat.damage or 0) or 0,
 			})
 		end
 	end
@@ -211,33 +214,8 @@ local function createDuel(player1, player2)
 
 		print(("[DuelManager] Duel #%d started!"):format(duelId))
 
-		-- 监听胜负 (轮询 MatchSystem)
-		while activeDuels[duelId] and activeDuels[duelId].active do
-			task.wait(0.5)
-
-			-- 检查 MatchSystem 是否结束了 (matchActive=false 且有击杀数达标)
-			local killCount = shared.MatchSystem.GetKillCount()
-			local p1Kills = killCount[player1] or 0
-			local p2Kills = killCount[player2] or 0
-
-			if p1Kills >= KILLS_TO_WIN then
-				endDuel(duelId, "RedTeam", killCount)
-				return
-			elseif p2Kills >= KILLS_TO_WIN then
-				endDuel(duelId, "BlueTeam", killCount)
-				return
-			end
-
-			-- 检查玩家是否还在
-			if not player1 or not player1.Parent then
-				endDuel(duelId, "BlueTeam", nil)
-				return
-			end
-			if not player2 or not player2.Parent then
-				endDuel(duelId, "RedTeam", nil)
-				return
-			end
-		end
+		-- 胜负为事件驱动：MatchSystem 达成击杀线时调用 DuelAPI.NotifyWin → endDuel。
+		-- 掉线由 PlayerRemoving → OnPlayerDisconnect → endDuel 处理。无需轮询。
 	end)
 end
 
@@ -247,6 +225,8 @@ endDuel = function(duelId, winnerTeam, stats)
 	if not duel or not duel.active then return end
 
 	duel.active = false
+	-- 未显式传入时（掉线/倒计时取消等），从 MatchSystem 拉取最终统计供结算面板使用
+	stats = stats or (shared.MatchSystem and shared.MatchSystem.GetMatchStats()) or nil
 	local player1 = duel.player1
 	local player2 = duel.player2
 
@@ -317,6 +297,17 @@ function DuelAPI.IsPlayerInActiveBattle(player)
 	local duelId = playerDuelMap[player]
 	local duel = duelId and activeDuels[duelId]
 	return duel ~= nil and duel.active == true and duel.started == true
+end
+
+function DuelAPI.NotifyWin(winner)
+	if not winner then return end
+	local duelId = playerDuelMap[winner]
+	if not duelId then return end
+	local duel = activeDuels[duelId]
+	if not duel or not duel.active then return end
+	local winnerTeam = winner.Team and winner.Team.Name
+		or (duel.player1 == winner and "RedTeam" or "BlueTeam")
+	endDuel(duelId, winnerTeam, nil)
 end
 
 shared.DuelManager = DuelAPI

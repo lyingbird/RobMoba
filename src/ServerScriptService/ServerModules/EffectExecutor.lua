@@ -397,6 +397,10 @@ function EffectExecutor:_applyDamageAfterShield(humanoid, amount, source, target
 		local sourcePlayer = Players:GetPlayerFromCharacter(source)
 		if sourcePlayer then
 			target:SetAttribute("LastDamagePlayer", sourcePlayer.Name)
+			-- 对局伤害统计（结算面板用）：仅战斗中累计，MatchSystem 自带 guard
+			if shared.MatchSystem and shared.MatchSystem.RecordDamage then
+				shared.MatchSystem.RecordDamage(sourcePlayer, amount)
+			end
 		end
 	end
 end

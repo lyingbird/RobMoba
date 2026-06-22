@@ -1,13 +1,14 @@
 -- ==========================================
 -- 对战系统 (Match System) — 战斗阶段辅助
--- 职责：击杀计数、死亡重生、胜负判定、伤害统计追踪
--- 注意：阵营分配和角色生成由 GameManager 控制
+-- 职责：击杀/死亡/伤害统计、死亡重生、达成击杀线时通知 DuelManager 判负
+-- 生命周期由 DuelManager 驱动（StartBattle/EndBattle/ResetMatch）。
+-- 注意：阵营分配与角色传送由 DuelManager 负责（GameManager 已弃用）。
 -- ==========================================
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- ========== 配置（从 GameManager 获取） ==========
+-- ========== 配置 ==========
 local KILLS_TO_WIN = 3           -- 先达到此击杀数获胜
 local RESPAWN_TIME = 5           -- 死亡后重生倒计时（秒）
 
@@ -28,7 +29,9 @@ local ARENA_SPAWNS = {
 }
 
 -- ========== 状态变量 ==========
-local killCount = {} -- { [Player] = number }
+local killCount = {}   -- { [Player] = number } 击杀数
+local deathCount = {}  -- { [Player] = number } 死亡数
+local damageDealt = {} -- { [Player] = number } 累计造成伤害
 local matchActive = false
 
 -- ========== 注意: CharacterAutoLoads 保持默认 true，大厅模式需要角色自动加载 ==========
@@ -61,19 +64,23 @@ local function checkWinCondition(killer)
 		local winnerTeam = killer.Team and killer.Team.Name or "Unknown"
 		print(("[MatchSystem] %s wins! Team: %s"):format(killer.Name, winnerTeam))
 
-		-- 胜负判定由 GameManager 处理（GameManager.onPlayerKill 中已有 enterResult 逻辑）
-		-- 注意：不在这里再次调用 NotifyKill，避免重复计数
-		-- onCharacterDied 中已经调用过 NotifyKill 了
-
-		-- 发送兼容的 kill_update（最终状态），但不发 match_end
-		-- match_end 由 GameManager 通过 MatchResultEvent 替代
+		-- 广播最终击杀状态
 		broadcastMatchState()
+
+		-- 事件驱动判负：通知 DuelManager 单点权威结算（取代旧的 0.5s 轮询）。
+		-- endDuel 自带 duel.active 幂等保护，与掉线判负不会重复结算。
+		if shared.DuelManager and shared.DuelManager.NotifyWin then
+			shared.DuelManager.NotifyWin(killer)
+		end
 	end
 end
 
 -- ========== 死亡处理 ==========
 local function onCharacterDied(player)
 	if not matchActive then return end
+
+	-- 记录死亡（结算面板用）
+	deathCount[player] = (deathCount[player] or 0) + 1
 
 	-- 获取击杀者（通过 LastDamagePlayer Attribute 追踪）
 	local character = player.Character
@@ -86,18 +93,8 @@ local function onCharacterDied(player)
 			killer.Name, player.Name, killCount[killer]
 		))
 
-		-- 通知 GameManager 记录击杀
-		if shared.GameManager then
-			shared.GameManager.NotifyKill(killer, player)
-		end
-
 		broadcastMatchState()
 		checkWinCondition(killer)
-	else
-		-- 自杀或未知击杀者，仍然通知 GameManager 记录死亡
-		if shared.GameManager then
-			shared.GameManager.NotifyKill(nil, player)
-		end
 	end
 
 	-- 发送死亡倒计时给客户端
@@ -138,8 +135,10 @@ end
 
 -- ========== 玩家角色加载监听 ==========
 local function onPlayerAdded(player)
-	-- 初始化击杀数
+	-- 初始化对局统计
 	killCount[player] = 0
+	deathCount[player] = 0
+	damageDealt[player] = 0
 
 	-- 角色加载时的设置
 	player.CharacterAdded:Connect(function(character)
@@ -147,7 +146,7 @@ local function onPlayerAdded(player)
 	end)
 
 	-- 注意：不再自动 LoadCharacter 和分配阵营
-	-- 这些由 GameManager 控制
+	-- 阵营分配与传送由 DuelManager 负责
 
 	broadcastMatchState()
 end
@@ -155,24 +154,31 @@ end
 -- ========== 玩家离开 ==========
 local function onPlayerRemoving(player)
 	killCount[player] = nil
+	deathCount[player] = nil
+	damageDealt[player] = nil
 	broadcastMatchState()
 end
 
--- ========== 对外 API（供 GameManager 调用） ==========
+-- ========== 对外 API（供 DuelManager 调用） ==========
 -- 通过 shared 表暴露
 
 local MatchSystemAPI = {}
 
+local function resetStats()
+	table.clear(killCount)
+	table.clear(deathCount)
+	table.clear(damageDealt)
+	for _, p in ipairs(Players:GetPlayers()) do
+		killCount[p] = 0
+		deathCount[p] = 0
+		damageDealt[p] = 0
+	end
+end
+
 -- 开始战斗追踪
 function MatchSystemAPI.StartBattle()
+	resetStats()
 	matchActive = true
-	-- 重置击杀计数
-	for p, _ in pairs(killCount) do
-		killCount[p] = 0
-	end
-	for _, p in ipairs(Players:GetPlayers()) do
-		killCount[p] = killCount[p] or 0
-	end
 	broadcastMatchState()
 	print("[MatchSystem] Battle tracking started!")
 end
@@ -186,16 +192,34 @@ end
 -- 重置比赛
 function MatchSystemAPI.ResetMatch()
 	matchActive = false
-	for p, _ in pairs(killCount) do
-		killCount[p] = 0
-	end
+	resetStats()
 	broadcastMatchState()
 	print("[MatchSystem] Match reset!")
 end
 
--- 获取击杀数据
+-- 记录玩家造成的伤害（由 EffectExecutor / AutoAttackManager 在实际造成伤害时调用）
+function MatchSystemAPI.RecordDamage(attacker, amount)
+	if not matchActive then return end
+	if not attacker or not amount or amount <= 0 then return end
+	damageDealt[attacker] = (damageDealt[attacker] or 0) + amount
+end
+
+-- 获取击杀数据（向后兼容）
 function MatchSystemAPI.GetKillCount()
 	return killCount
+end
+
+-- 获取完整对局统计 { [Player] = { kills, deaths, damage } }
+function MatchSystemAPI.GetMatchStats()
+	local stats = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		stats[p] = {
+			kills = killCount[p] or 0,
+			deaths = deathCount[p] or 0,
+			damage = damageDealt[p] or 0,
+		}
+	end
+	return stats
 end
 
 shared.MatchSystem = MatchSystemAPI
@@ -211,17 +235,7 @@ for _, player in ipairs(Players:GetPlayers()) do
 	end)
 end
 
--- 默认开启战斗追踪（当 GameManager 发出 BATTLE 状态时由 GameManager 调用 StartBattle）
--- 为了向后兼容，如果 GameManager 未加载，默认 matchActive = true
-task.delay(5, function()
-	if shared.GameManager then
-		-- GameManager 存在，由它控制
-		print("[MatchSystem] GameManager detected, waiting for battle start signal")
-	else
-		-- 兼容模式：无 GameManager 时自动激活
-		matchActive = true
-		print("[MatchSystem] No GameManager detected, auto-activating battle tracking")
-	end
-end)
+-- matchActive 仅由 DuelManager 在对决开始/结束时通过 StartBattle/EndBattle 控制。
+-- 大厅/训练场期间保持 false，避免误把大厅死亡当作对局击杀统计。
 
 print("[MatchSystem] Match system initialized! Kills to win:", KILLS_TO_WIN)
